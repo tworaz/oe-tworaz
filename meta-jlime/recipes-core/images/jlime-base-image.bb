@@ -1,4 +1,4 @@
-IMAGE_FEATURES += "apps-console-core package-management"
+IMAGE_FEATURES += "package-management"
 
 LICENSE = "MIT"
 
