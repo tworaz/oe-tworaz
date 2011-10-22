@@ -8,7 +8,7 @@ inherit deploy
 SRC_URI = "git://github.com/tworaz/boost-bootcode.git;branch=master;protocol=git"
 SRCREV = "4c84f3b124e1592b3110c335228eb3a362c72e3b"
 PV = "1+git${SRCPV}"
-PR = "r0"
+PR = "r1"
 
 LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://COPYING;md5=3775480a712fc46a69647678acb234cb"
@@ -18,7 +18,7 @@ COMPATIBLE_HOST = "arm.*-linux"
 COMPATIBLE_MACHINE = "netbookpro"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-BOOST_KERNEL_CMDLINE ?= 'root=/dev/sda2 rw console=tty0 init=/sbin/init quiet'
+BOOST_KERNEL_CMDLINE ?= 'root=/dev/sda2 rw rootdelay=1 console=tty0 init=/sbin/init quiet'
 
 S = "${WORKDIR}/git"
 
