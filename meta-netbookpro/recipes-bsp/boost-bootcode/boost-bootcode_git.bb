@@ -6,12 +6,12 @@ DESCRIPTION = "Binary boot code allowing to start linux kernel from BooSt boot l
 inherit deploy
 
 SRC_URI = "git://github.com/tworaz/boost-bootcode.git;branch=master;protocol=git"
-SRCREV = "4c84f3b124e1592b3110c335228eb3a362c72e3b"
+SRCREV = "811dd1d69d6098f72a9e30e5a96313386a0d56d9"
 PV = "1+git${SRCPV}"
 PR = "r1"
 
 LICENSE = "BSD"
-LIC_FILES_CHKSUM = "file://COPYING;md5=3775480a712fc46a69647678acb234cb"
+LIC_FILES_CHKSUM = "file://COPYING;md5=454d9914f9ad7daf446a82976f7ea7e3"
 
 PACKAGES = ""
 COMPATIBLE_HOST = "arm.*-linux"
