@@ -4,12 +4,12 @@
 DESCRIPTION = "Tool for creating bootable images for Psion Teklogix NetBook Pro"
 DEPENDS = "zlib-native"
 
-SRCREV = "2a9036d5b67066f533c37c41f4c03cc7dc62214f"
+SRCREV = "a04194c06b63d60b2db137c69b5fe359c0659a13"
 PV = "0.1.99+git${SRCPV}"
 PR = "r0"
 
 LICENSE = "BSD"
-LIC_FILES_CHKSUM = "file://COPYING;md5=3775480a712fc46a69647678acb234cb"
+LIC_FILES_CHKSUM = "file://COPYING;md5=454d9914f9ad7daf446a82976f7ea7e3"
 
 SRC_URI = "git://github.com/tworaz/boost-img.git;branch=master;protocol=git"
 
