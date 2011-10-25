@@ -5,8 +5,8 @@ PR = "r0"
 
 DEPENDS="boost-img-native boost-bootcode"
 
-SRC_URI = "git://github.com/tworaz/linux.git;protocol=git;branch=v3.1.0-rc10-nbpro0"
-SRCREV="a9e99b99f497fc4fa60b7edd347cde59553c5a98"
+SRC_URI = "git://github.com/tworaz/linux.git;protocol=git;branch=v3.1.0-nbpro0"
+SRCREV="9647d171bb22d1c479ef8030d5dc61aeb8d4baa5"
 
 ARCH = "arm"
 COMPATIBLE_HOST = "arm.*-linux"
