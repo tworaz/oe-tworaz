@@ -1,0 +1,2007 @@
+commit cd153a2a0a6c53c3edeba52db2f3dffc8ff3f7d8
+Author: Peter Tworek <tworaz666@gmail.com>
+Date:   Thu Oct 27 15:16:47 2011 +0200
+
+    Bring back Xepson support.
+
+diff --git a/configure.ac b/configure.ac
+index 51d01e4..1473ed0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -654,6 +654,7 @@ AC_ARG_ENABLE(kdrive,         AS_HELP_STRING([--enable-kdrive], [Build kdrive se
+ AC_ARG_ENABLE(xephyr,         AS_HELP_STRING([--enable-xephyr], [Build the kdrive Xephyr server (default: auto)]), [XEPHYR=$enableval], [XEPHYR=auto])
+ AC_ARG_ENABLE(xfake,          AS_HELP_STRING([--enable-xfake], [Build the kdrive 'fake' server (default: auto)]), [XFAKE=$enableval], [XFAKE=auto])
+ AC_ARG_ENABLE(xfbdev,         AS_HELP_STRING([--enable-xfbdev], [Build the kdrive framebuffer device server (default: auto)]), [XFBDEV=$enableval], [XFBDEV=auto])
++AC_ARG_ENABLE(xepson,         AS_HELP_STRING([--enable-xepson], [Build the kdrive Epson 13806 framebuffer server (default: disabled)]), [XEPSON=$enableval], [XEPSON=no])
+ dnl kdrive options
+ AC_ARG_ENABLE(kdrive-kbd,     AS_HELP_STRING([--enable-kdrive-kbd], [Build kbd driver for kdrive (default: auto)]), [KDRIVE_KBD=$enableval], [KDRIVE_KBD=auto])
+ AC_ARG_ENABLE(kdrive-mouse,   AC_HELP_STRING([--enable-kdrive-mouse], [Build mouse driver for kdrive (default: auto)]), [KDRIVE_MOUSE=$enableval], [KDRIVE_MOUSE=auto])
+@@ -1990,6 +1991,11 @@ if test "$KDRIVE" = yes; then
+         AC_DEFINE(KDRIVEFBDEV, 1, [Build fbdev-based kdrive server])
+     fi
+ 
++    if test "x$XEPSON" = xyes && test "x$KDRIVEFBDEVLIB" = xyes; then
++	KDRIVEEPSONLIB=yes
++	AC_DEFINE(KDRIVEEPSON, 1, [Build kdrive server for Epson 13806 chip])
++    fi
++
+ 
+     PKG_CHECK_MODULES([TSLIB], [tslib-0.0], [HAVE_TSLIB="yes"], [HAVE_TSLIB="no"])
+     if test "x$HAVE_TSLIB" = xno; then
+@@ -2098,8 +2104,11 @@ AM_CONDITIONAL(KDRIVE_KBD,   [test "x$KDRIVE_KBD" = xyes])
+ AM_CONDITIONAL(KDRIVE_MOUSE, [test "x$KDRIVE_MOUSE" = xyes])
+ AM_CONDITIONAL(TSLIB, [test "x$HAVE_TSLIB" = xyes])
+ AM_CONDITIONAL(KDRIVEFBDEV, [test "x$XFBDEV" = xyes])
++AM_CONDITIONAL(KDRIVEEPSON, [test "x$XEPSON" = xyes])
+ AM_CONDITIONAL(XEPHYR, [test "x$KDRIVE" = xyes && test "x$XEPHYR" = xyes])
++AM_CONDITIONAL(XEPSON, [test "x$KDRIVE" = xyes && test "x$XEPSON" = xyes])
+ AM_CONDITIONAL(BUILD_KDRIVEFBDEVLIB, [test "x$KDRIVE" = xyes && test "x$KDRIVEFBDEVLIB" = xyes])
++AM_CONDITIONAL(BUILD_KDRIVEEPSONLIB, [test "x$KDRIVE" = xyes && test "x$KDRIVEEPSONLIB" = xyes])
+ AM_CONDITIONAL(XFAKESERVER, [test "x$KDRIVE" = xyes && test "x$XFAKE" = xyes])
+ 
+ dnl and the rest of these are generic, so they're in config.h
+@@ -2227,6 +2236,7 @@ hw/xquartz/xpr/Makefile
+ hw/kdrive/Makefile
+ hw/kdrive/ephyr/Makefile
+ hw/kdrive/ephyr/man/Makefile
++hw/kdrive/epson/Makefile
+ hw/kdrive/fake/Makefile
+ hw/kdrive/fbdev/Makefile
+ hw/kdrive/linux/Makefile
+diff --git a/hw/kdrive/Makefile.am b/hw/kdrive/Makefile.am
+index 471ca89..7c778e1 100644
+--- a/hw/kdrive/Makefile.am
++++ b/hw/kdrive/Makefile.am
+@@ -10,6 +10,10 @@ if XEPHYR
+ XEPHYR_SUBDIRS = ephyr
+ endif
+ 
++if XEPSON
++XEPSON_SUBDIRS = epson
++endif
++
+ if KDRIVELINUX
+ LINUX_SUBDIRS = linux
+ endif
+@@ -17,6 +21,7 @@ endif
+ SERVER_SUBDIRS = 		\
+ 	$(FBDEV_SUBDIRS)	\
+ 	$(XEPHYR_SUBDIRS)       \
++	$(XEPSON_SUBDIRS)	\
+ 	$(XFAKE_SUBDIRS)
+ 
+ SUBDIRS =			\
+@@ -24,7 +29,7 @@ SUBDIRS =			\
+ 	$(LINUX_SUBDIRS)	\
+ 	$(SERVER_SUBDIRS)
+ 
+-DIST_SUBDIRS = fbdev ephyr src linux fake
++DIST_SUBDIRS = fbdev ephyr epson src linux fake
+ 
+ relink:
+ 	$(AM_V_at)for i in $(SERVER_SUBDIRS) ; do $(MAKE) -C $$i relink || exit 1 ; done
+diff --git a/hw/kdrive/epson/.gitignore b/hw/kdrive/epson/.gitignore
+new file mode 100644
+index 0000000..2207501
+--- /dev/null
++++ b/hw/kdrive/epson/.gitignore
+@@ -0,0 +1,2 @@
++#		Add & Override for this directory and it's subdirectories
++Xepson
+diff --git a/hw/kdrive/epson/Makefile.am b/hw/kdrive/epson/Makefile.am
+new file mode 100644
+index 0000000..4bd4db4
+--- /dev/null
++++ b/hw/kdrive/epson/Makefile.am
+@@ -0,0 +1,34 @@
++INCLUDES = 			\
++	@KDRIVE_INCS@		\
++	@KDRIVE_CFLAGS@		\
++	-I$(top_srcdir)/exa
++
++noinst_LTLIBRARIES = libepson.la
++
++libepson_la_SOURCES = 	\
++	epson13806.c	\
++	epson13806.h	\
++	epson13806draw.c\
++	epson13806draw.h\
++	epson13806reg.h
++
++if KDRIVEEPSON
++bin_PROGRAMS = Xepson
++
++Xepson_SOURCES = \
++	epson13806stub.c
++
++Xepson_LDADD = \
++	libepson.la \
++	$(top_builddir)/exa/libexa.la \
++	@KDRIVE_LIBS@
++
++Xepson_DEPENDENCIES =	\
++	libepson.la	\
++	@KDRIVE_LOCAL_LIBS@
++
++Xepson_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG)
++
++relink:
++	$(AM_V_at)rm -f $(bin_PROGRAMS) && $(MAKE) $(bin_PROGRAMS)
++endif
+diff --git a/hw/kdrive/epson/Xepson.man b/hw/kdrive/epson/Xepson.man
+new file mode 100644
+index 0000000..96aab81
+--- /dev/null
++++ b/hw/kdrive/epson/Xepson.man
+@@ -0,0 +1,26 @@
++.\" $XFree86: xc/programs/Xserver/hw/kdrive/epson/Xepson.man,v 1.5 2001/02/13 21:15:15 dawes Exp $
++.\"
++.TH Xepson 1 __vendorversion__
++.SH NAME
++Xepson \- Epson 13806 accelerated framebuffer device tiny X server
++.SH SYNOPSIS
++.B Xepson
++.RI [ :display ]
++.RI [ option ...]
++.SH DESCRIPTION
++.B Xepson
++is a driver for the Epson LCD 13806 framebuffer.
++.B Xepson
++is heavily based upon the Kdrive Xfbdev driver, and behaves very similarly, except for accelerated operations targetted at the Epson chip.
++.SH OPTIONS
++.B Xepson
++accepts the common options of the Xkdrive family of servers.  Please
++see Xkdrive(1).
++.SH KEYBOARD
++To be written.
++.SH SEE ALSO
++X(__miscmansuffix__), Xserver(1), Xkdrive(1), xdm(1), xinit(1).
++.SH AUTHORS
++The
++.B Xepson
++server was written by Costas Stylianou based on the Xfbdev sources with some contributions from Phil Blundell & Peter Naulls.
+diff --git a/hw/kdrive/epson/epson13806.c b/hw/kdrive/epson/epson13806.c
+new file mode 100644
+index 0000000..bbf16e8
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806.c
+@@ -0,0 +1,628 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806.c - Implementation of hardware accelerated functions for
++ *                Epson S1D13806 graphics controller.
++ *
++ * History:
++ * 28-Jan-04  C.Stylianou                     PRJ NBL: Created from fbdev.c.
++ * 30-Mar-04  Phil Blundell/Peter Naulls      Integration with XFree 4.3
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <kdrive-config.h>
++#endif
++
++#include <errno.h>
++#include <sys/ioctl.h>
++
++#include "epson13806.h"
++#include "epson13806reg.h"
++
++extern int KdTsPhyScreen;
++
++Bool
++epsonInitialize (KdCardInfo *card, EpsonPriv *priv)
++{
++    int k;
++    unsigned long off;
++    if ((priv->fd = open("/dev/fb0", O_RDWR)) < 0) {
++        perror("Error opening /dev/fb0\n");
++        return FALSE;
++    }
++
++    if ((k=ioctl(priv->fd, FBIOGET_FSCREENINFO, &priv->fix)) < 0) {
++        perror("Error with /dev/fb ioctl FIOGET_FSCREENINFO");
++        close (priv->fd);
++        return FALSE;
++    }
++
++    if ((k=ioctl(priv->fd, FBIOGET_VSCREENINFO, &priv->var)) < 0) {
++        perror("Error with /dev/fb ioctl FIOGET_VSCREENINFO");
++        close (priv->fd);
++        return FALSE;
++    }
++
++    priv->fb_base = epsonMapDevice (EPSON13806_PHYSICAL_VMEM_ADDR, EPSON13806_VMEM_SIZE);
++    if (priv->fb_base == (char *)-1) {
++        perror("ERROR: mmap framebuffer fails!");
++        close (priv->fd);
++        return FALSE;
++    }
++
++    off = (unsigned long) priv->fix.smem_start % (unsigned long) getpagesize();
++    priv->fb = priv->fb_base + off;
++    return TRUE;
++}
++
++void *
++epsonMapDevice (CARD32 addr, CARD32 size)
++{
++    void    *a;
++    int	    fd;
++
++#ifdef __arm__
++    fd = open ("/dev/mem", O_RDWR|O_SYNC);
++#else
++    fd = open ("/dev/mem", O_RDWR);
++#endif
++    if (fd < 0)
++	FatalError ("KdMapDevice: failed to open /dev/mem (%s)\n",
++		    strerror (errno));
++
++    a = mmap ((caddr_t) 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, addr);
++    close (fd);
++    if ((long) a == -1)
++	FatalError ("KdMapDevice: failed to map frame buffer (%s)\n",
++		    strerror (errno));
++    return a;
++}
++
++Bool
++epsonCardInit (KdCardInfo *card)
++{
++    EpsonPriv    *priv;
++
++    priv = (EpsonPriv *) malloc (sizeof (EpsonPriv));
++    if (!priv)
++        return FALSE;
++
++    if (!epsonInitialize (card, priv))
++    {
++        free (priv);
++        return FALSE;
++    }
++    card->driver = priv;
++
++    // Call InitEpson to map onto Epson registers
++    initEpson13806();
++
++    return TRUE;
++}
++
++#define FBDEV_KLUDGE_FORMAT
++#ifdef FBDEV_KLUDGE_FORMAT
++static Pixel
++epsonMakeContig (Pixel orig, Pixel others)
++{
++    Pixel   low;
++
++    low = lowbit (orig) >> 1;
++    while (low && (others & low) == 0)
++    {
++        orig |= low;
++        low >>= 1;
++    }
++    return orig;
++}
++#endif
++
++Bool
++epsonScreenInitialize (KdScreenInfo *screen, EpsonScrPriv *scrpriv)
++{
++    EpsonPriv  *priv = screen->card->driver;
++    Pixel      allbits;
++    int        depth;
++    Bool       gray;
++
++    depth = priv->var.bits_per_pixel;
++    gray = priv->var.grayscale;
++
++    screen->fb.visuals = (1 << TrueColor);
++#define Mask(o,l)   (((1 << l) - 1) << o)
++    screen->fb.redMask = Mask (priv->var.red.offset, priv->var.red.length);
++    screen->fb.greenMask = Mask (priv->var.green.offset, priv->var.green.length);
++    screen->fb.blueMask = Mask (priv->var.blue.offset, priv->var.blue.length);
++#ifdef FBDEV_KLUDGE_FORMAT
++    /*
++     * This is a kludge so that Render will work -- fill in the gaps
++     * in the pixel
++     */
++    screen->fb.redMask = epsonMakeContig (screen->fb.redMask,
++                         screen->fb.greenMask|
++                         screen->fb.blueMask);
++
++    screen->fb.greenMask = epsonMakeContig (screen->fb.greenMask,
++                           screen->fb.redMask|
++                           screen->fb.blueMask);
++
++    screen->fb.blueMask = epsonMakeContig (screen->fb.blueMask,
++                          screen->fb.redMask|
++                          screen->fb.greenMask);
++
++#endif
++    allbits = screen->fb.redMask | screen->fb.greenMask | screen->fb.blueMask;
++    depth = 32;
++    while (depth && !(allbits & (1 << (depth - 1))))
++        depth--;
++
++    screen->rate = 60;
++    scrpriv->randr = screen->randr;
++
++    {
++        screen->fb.depth = depth;
++        screen->fb.bitsPerPixel = priv->var.bits_per_pixel;
++        screen->width = priv->var.xres;
++        screen->height = priv->var.yres;
++        screen->fb.byteStride = priv->fix.line_length;
++        screen->fb.pixelStride = (priv->fix.line_length * 8 /
++                     priv->var.bits_per_pixel);
++        screen->fb.frameBuffer = (CARD8 *) (priv->fb);
++#if 0 //FIXME: seems to be completley removed since xserver 1.5
++        screen->off_screen_base = screen->fb.byteStride * screen->height;
++        screen->memory_base = priv->fb;
++        screen->memory_size = EPSON13806_VMEM_SIZE;
++#endif
++    }
++    return TRUE;
++}
++
++Bool
++epsonScreenInit (KdScreenInfo *screen)
++{
++    EpsonScrPriv *scrpriv;
++
++    scrpriv = malloc (sizeof (EpsonScrPriv));
++    if (!scrpriv)
++        return FALSE;
++    memset (scrpriv, '\0', sizeof (EpsonScrPriv));
++    screen->driver = scrpriv;
++    if (!epsonScreenInitialize (screen, scrpriv)) {
++        screen->driver = 0;
++        free (scrpriv);
++        return FALSE;
++    }
++    return TRUE;
++}
++
++static void *
++epsonWindowLinear (ScreenPtr    pScreen,
++           CARD32    row,
++           CARD32    offset,
++           int        mode,
++           CARD32    *size,
++           void        *closure)
++{
++    KdScreenPriv(pScreen);
++    EpsonPriv        *priv = pScreenPriv->card->driver;
++
++    if (!pScreenPriv->enabled)
++        return 0;
++    *size = priv->fix.line_length;
++    return (CARD8 *) priv->fb + row * priv->fix.line_length + offset;
++}
++
++
++#ifdef RANDR
++static Bool
++epsonRandRGetInfo (ScreenPtr pScreen, Rotation *rotations)
++{
++    KdScreenPriv(pScreen);
++    KdScreenInfo        *screen = pScreenPriv->screen;
++    EpsonScrPriv        *scrpriv = screen->driver;
++#if 0
++    RRVisualGroupPtr        pVisualGroup;
++    RRGroupOfVisualGroupPtr pGroupOfVisualGroup;
++#endif
++    RRScreenSizePtr        pSize;
++    Rotation            randr;
++    int                n;
++
++    *rotations = RR_Rotate_0|RR_Rotate_90|RR_Rotate_180|RR_Rotate_270;
++
++    for (n = 0; n < pScreen->numDepths; n++)
++        if (pScreen->allowedDepths[n].numVids)
++            break;
++    if (n == pScreen->numDepths)
++        return FALSE;
++
++#if 0
++    pVisualGroup = RRCreateVisualGroup (pScreen);
++    if (!pVisualGroup)
++        return FALSE;
++
++    if (!RRAddDepthToVisualGroup (pScreen, pVisualGroup, &pScreen->allowedDepths[n])) {
++        RRDestroyVisualGroup (pScreen, pVisualGroup);
++        return FALSE;
++        }
++
++    pVisualGroup = RRRegisterVisualGroup (pScreen, pVisualGroup);
++    if (!pVisualGroup)
++        return FALSE;
++
++    pGroupOfVisualGroup = RRCreateGroupOfVisualGroup (pScreen);
++
++    if (!RRAddVisualGroupToGroupOfVisualGroup (pScreen,
++                     pGroupOfVisualGroup,
++                     pVisualGroup))
++    {
++    RRDestroyGroupOfVisualGroup (pScreen, pGroupOfVisualGroup);
++    /* pVisualGroup left until screen closed */
++    return FALSE;
++    }
++
++    pGroupOfVisualGroup = RRRegisterGroupOfVisualGroup (pScreen, pGroupOfVisualGroup);
++    if (!pGroupOfVisualGroup)
++    return FALSE;
++#endif
++
++    pSize = RRRegisterSize (pScreen,
++                screen->width,
++                screen->height,
++                screen->width_mm,
++                screen->height_mm);
++
++    randr = KdSubRotation (scrpriv->randr, screen->randr);
++
++    RRSetCurrentConfig (pScreen, randr, RR_Rotate_0, pSize);
++
++    return TRUE;
++}
++
++static Bool
++epsonRandRSetConfig (ScreenPtr        pScreen,
++             Rotation        randr,
++             int        rate,
++             RRScreenSizePtr    pSize)
++{
++    KdScreenPriv(pScreen);
++    KdScreenInfo    *screen = pScreenPriv->screen;
++    EpsonScrPriv    *scrpriv = screen->driver;
++    Bool        wasEnabled = pScreenPriv->enabled;
++
++    randr = KdAddRotation (randr, screen->randr);
++
++    if (scrpriv->randr != randr)
++    {
++        if (wasEnabled)
++            KdDisableScreen (pScreen);
++
++        scrpriv->randr = randr;
++
++        if (wasEnabled)
++            KdEnableScreen (pScreen);
++    }
++    return TRUE;
++}
++
++static Bool
++epsonRandRInit (ScreenPtr pScreen)
++{
++    rrScrPrivPtr    pScrPriv;
++
++    if (!RRScreenInit (pScreen))
++    return FALSE;
++
++    pScrPriv = rrGetScrPriv(pScreen);
++    pScrPriv->rrGetInfo = epsonRandRGetInfo;
++    pScrPriv->rrSetConfig = epsonRandRSetConfig;
++    return TRUE;
++}
++#endif
++
++static Bool
++epsonCreateColormap (ColormapPtr pmap)
++{
++    ScreenPtr        pScreen = pmap->pScreen;
++    KdScreenPriv(pScreen);
++    EpsonPriv        *priv = pScreenPriv->card->driver;
++    VisualPtr        pVisual;
++    int            i;
++    int            nent;
++    xColorItem        *pdefs;
++
++    switch (priv->fix.visual) {
++        case FB_VISUAL_STATIC_PSEUDOCOLOR:
++            pVisual = pmap->pVisual;
++            nent = pVisual->ColormapEntries;
++            pdefs = malloc (nent * sizeof (xColorItem));
++            if (!pdefs)
++                return FALSE;
++            for (i = 0; i < nent; i++)
++                pdefs[i].pixel = i;
++            epsonGetColors (pScreen, nent, pdefs);
++            for (i = 0; i < nent; i++)
++            {
++                pmap->red[i].co.local.red = pdefs[i].red;
++                pmap->red[i].co.local.green = pdefs[i].green;
++                pmap->red[i].co.local.blue = pdefs[i].blue;
++            }
++            free (pdefs);
++            return TRUE;
++
++        default:
++            return fbInitializeColormap (pmap);
++    }
++}
++
++Bool
++epsonInitScreen (ScreenPtr pScreen)
++{
++#ifdef TOUCHSCREEN
++    KdTsPhyScreen = pScreen->myNum;
++#endif
++
++    pScreen->CreateColormap = epsonCreateColormap;
++
++    return TRUE;
++}
++
++static Bool
++epsonFinishInitScreen (ScreenPtr pScreen)
++{
++    if (!shadowSetup (pScreen))
++    return FALSE;
++
++#ifdef RANDR
++    if (!epsonRandRInit (pScreen))
++    return FALSE;
++#endif
++
++    return TRUE;
++}
++
++static Bool
++epsonSetShadow (ScreenPtr pScreen)
++{
++    KdScreenPriv(pScreen);
++    KdScreenInfo    *screen = pScreenPriv->screen;
++    EpsonScrPriv    *scrpriv = screen->driver;
++    ShadowUpdateProc    update;
++    ShadowWindowProc    window;
++
++    window = epsonWindowLinear;
++    update = shadowUpdatePacked;
++
++    return KdShadowSet (pScreen, scrpriv->randr, update, window);
++}
++
++static Bool
++epsonCreateResources (ScreenPtr pScreen)
++{
++    return epsonSetShadow (pScreen);
++}
++
++void
++epsonPreserve (KdCardInfo *card)
++{
++}
++
++Bool
++epsonEnable (ScreenPtr pScreen)
++{
++    KdScreenPriv(pScreen);
++    EpsonPriv        *priv = pScreenPriv->card->driver;
++    int            k;
++
++    priv->var.activate = FB_ACTIVATE_NOW|FB_CHANGE_CMAP_VBL;
++
++    /* display it on the LCD */
++    k = ioctl (priv->fd, FBIOPUT_VSCREENINFO, &priv->var);
++    if (k < 0) {
++        perror ("FBIOPUT_VSCREENINFO");
++        return FALSE;
++    }
++
++    k = ioctl (priv->fd, FBIOGET_FSCREENINFO, &priv->fix);
++    if (k < 0) {
++        perror ("FBIOGET_FSCREENINFO");
++        return FALSE;
++    }
++
++    if (priv->fix.visual == FB_VISUAL_DIRECTCOLOR) {
++        struct fb_cmap    cmap;
++        int        i;
++
++        for (i = 0;
++             i < (1 << priv->var.red.length) ||
++             i < (1 << priv->var.green.length) ||
++             i < (1 << priv->var.blue.length); i++) {
++            priv->red[i] = i * 65535 / ((1 << priv->var.red.length) - 1);
++            priv->green[i] = i * 65535 / ((1 << priv->var.green.length) - 1);
++            priv->blue[i] = i * 65535 / ((1 << priv->var.blue.length) - 1);
++        }
++        cmap.start = 0;
++        cmap.len = i;
++        cmap.red = &priv->red[0];
++        cmap.green = &priv->green[0];
++        cmap.blue = &priv->blue[0];
++        cmap.transp = 0;
++        ioctl (priv->fd, FBIOPUTCMAP, &cmap);
++    }
++    return TRUE;
++}
++
++Bool
++epsonDPMS (ScreenPtr pScreen, int mode)
++{
++    KdScreenPriv(pScreen);
++    EpsonPriv    *priv = pScreenPriv->card->driver;
++    static int oldmode = -1;
++
++    if (mode == oldmode)
++        return TRUE;
++#ifdef FBIOPUT_POWERMODE
++    if (ioctl (priv->fd, FBIOPUT_POWERMODE, &mode) >= 0) {
++        oldmode = mode;
++        return TRUE;
++    }
++#endif
++#ifdef FBIOBLANK
++    if (ioctl (priv->fd, FBIOBLANK, mode ? mode + 1 : 0) >= 0) {
++        oldmode = mode;
++        return TRUE;
++    }
++#endif
++    return FALSE;
++}
++
++void
++epsonDisable (ScreenPtr pScreen)
++{
++}
++
++void
++epsonRestore (KdCardInfo *card)
++{
++}
++
++void
++epsonScreenFini (KdScreenInfo *screen)
++{
++}
++
++void
++epsonCardFini (KdCardInfo *card)
++{
++    EpsonPriv    *priv = card->driver;
++
++    munmap (priv->fb_base, priv->fix.smem_len);
++    close (priv->fd);
++    free (priv);
++}
++
++void
++epsonGetColors (ScreenPtr pScreen, int n, xColorItem *pdefs)
++{
++    KdScreenPriv(pScreen);
++    EpsonPriv        *priv = pScreenPriv->card->driver;
++    struct fb_cmap  cmap;
++    int            p;
++    int            k;
++    int            min, max;
++
++    min = 256;
++    max = 0;
++    for (k = 0; k < n; k++) {
++        if (pdefs[k].pixel < min)
++            min = pdefs[k].pixel;
++        if (pdefs[k].pixel > max)
++            max = pdefs[k].pixel;
++    }
++    cmap.start = min;
++    cmap.len = max - min + 1;
++    cmap.red = &priv->red[min];
++    cmap.green = &priv->green[min];;
++    cmap.blue = &priv->blue[min];
++    cmap.transp = 0;
++    k = ioctl (priv->fd, FBIOGETCMAP, &cmap);
++    if (k < 0) {
++        perror ("can't get colormap");
++        return;
++        }
++    while (n--) {
++        p = pdefs->pixel;
++        pdefs->red = priv->red[p];
++        pdefs->green = priv->green[p];
++        pdefs->blue = priv->blue[p];
++        pdefs++;
++    }
++}
++
++void
++epsonPutColors (ScreenPtr pScreen, int n, xColorItem *pdefs)
++{
++    KdScreenPriv(pScreen);
++    EpsonPriv    *priv = pScreenPriv->card->driver;
++    struct fb_cmap  cmap;
++    int            p;
++    int            min, max;
++
++    min = 256;
++    max = 0;
++    while (n--) {
++        p = pdefs->pixel;
++        priv->red[p] = pdefs->red;
++        priv->green[p] = pdefs->green;
++        priv->blue[p] = pdefs->blue;
++        if (p < min)
++            min = p;
++        if (p > max)
++            max = p;
++        pdefs++;
++        }
++    cmap.start = min;
++    cmap.len = max - min + 1;
++    cmap.red = &priv->red[min];
++    cmap.green = &priv->green[min];
++    cmap.blue = &priv->blue[min];
++    cmap.transp = 0;
++    ioctl (priv->fd, FBIOPUTCMAP, &cmap);
++}
++
++
++
++KdCardFuncs epsonFuncs = {
++    epsonCardInit,          /* cardinit */
++    epsonScreenInit,        /* scrinit */
++    epsonInitScreen,        /* initScreen */
++    epsonFinishInitScreen,
++    epsonCreateResources,
++    epsonPreserve,          /* preserve */
++    epsonEnable,            /* enable */
++    epsonDPMS,              /* dpms */
++    epsonDisable,           /* disable */
++    epsonRestore,           /* restore */
++    epsonScreenFini,        /* scrfini */
++    epsonCardFini,          /* cardfini */
++
++    0,                      /* initCursor */
++    0,                      /* enableCursor */
++    0,                      /* disableCursor */
++    0,                      /* finiCursor */
++    0,                      /* recolorCursor */
++
++    /*
++     * History:
++     * 28-Jan-04  C.Stylianou       NBL: Added the following for h/w accel.
++     *
++     */
++
++    epsonDrawInit,          /* initAccel */
++    epsonDrawEnable,        /* enableAccel */
++    epsonDrawDisable,       /* disableAccel */
++    epsonDrawFini,          /* finiAccel */
++
++    epsonGetColors,         /* getColors */
++    epsonPutColors,         /* putColors */
++};
+diff --git a/hw/kdrive/epson/epson13806.h b/hw/kdrive/epson/epson13806.h
+new file mode 100644
+index 0000000..2e9e7db
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806.h
+@@ -0,0 +1,136 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806draw.h - Implementation of hard ware accelerated functions for epson S1D13806
++ *               Graphic controller.
++ *
++ * History:
++ * 28-Jan-04  C.Stylianou       PRJ NBL: Created from fbdev.h
++ *
++ */
++
++#ifndef _EPSON13806_H_
++#define _EPSON13806_H_
++
++#include <stdio.h>
++#include <linux/fb.h>
++#include <unistd.h>
++#include <sys/mman.h>
++
++#include "kdrive.h"
++#include "exa.h"
++
++#ifdef RANDR
++#include "randrstr.h"
++#endif
++
++typedef struct _epsonPriv {
++    struct fb_var_screeninfo	var;
++    struct fb_fix_screeninfo	fix;
++    __u16			red[256];
++    __u16			green[256];
++    __u16			blue[256];
++    int				fd;
++    char			*fb;
++    char			*fb_base;
++} EpsonPriv;
++
++typedef struct _epsonScrPriv {
++    Rotation		randr;
++    Bool		shadow;
++    ExaDriverRec	exa;
++} EpsonScrPriv;
++
++extern KdCardFuncs  epsonFuncs;
++
++Bool
++epsonInitialize (KdCardInfo *card, EpsonPriv *priv);
++
++void *
++epsonMapDevice (CARD32 addr, CARD32 size);
++
++Bool
++epsonCardInit (KdCardInfo *card);
++
++Bool
++epsonScreenInit (KdScreenInfo *screen);
++
++Bool
++epsonScreenInitialize (KdScreenInfo *screen, EpsonScrPriv *scrpriv);
++
++Bool
++epsonInitScreen (ScreenPtr pScreen);
++
++void
++epsonPreserve (KdCardInfo *card);
++
++Bool
++epsonEnable (ScreenPtr pScreen);
++
++Bool
++epsonDPMS (ScreenPtr pScreen, int mode);
++
++void
++epsonDisable (ScreenPtr pScreen);
++
++void
++epsonRestore (KdCardInfo *card);
++
++void
++epsonScreenFini (KdScreenInfo *screen);
++
++void
++epsonCardFini (KdCardInfo *card);
++
++void
++epsonGetColors (ScreenPtr pScreen, int n, xColorItem *pdefs);
++
++void
++epsonPutColors (ScreenPtr pScreen, int n, xColorItem *pdefs);
++
++/*
++ * History:
++ * 28-Jan-04  C.Stylianou       NBL: Added the following prototypes for h/w accel.
++ *
++ */
++Bool
++epsonDrawInit (ScreenPtr pScreen);
++
++void
++epsonDrawEnable (ScreenPtr pScreen);
++
++void
++epsonDrawDisable (ScreenPtr pScreen);
++
++void
++epsonDrawFini (ScreenPtr pScreen);
++
++/*
++ * History:
++ * 28-Jan-04  C.Stylianou       NBL: Maps to Epson registers
++ *
++ */
++void
++initEpson13806(void);
++
++
++#endif /* __EPSON13806_H_ */
+diff --git a/hw/kdrive/epson/epson13806draw.c b/hw/kdrive/epson/epson13806draw.c
+new file mode 100644
+index 0000000..f55a64d
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806draw.c
+@@ -0,0 +1,668 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806draw.c - Implementation of hardware accelerated functions for epson S1D13806
++ *               Graphic controller.
++ *
++ * History:
++ * 28-Jan-04  C.Stylianou       PRJ NBL: Created from chipsdraw.c
++ *
++ */
++
++#include    "epson13806.h"
++#include    "epson13806draw.h"
++#include    "epson13806reg.h"
++
++#include    "gcstruct.h"
++#include    "scrnintstr.h"
++#include    "pixmapstr.h"
++#include    "regionstr.h"
++#include    "mistruct.h"
++#include    "dixfontstr.h"
++#include    "fb.h"
++#include    "migc.h"
++#include    "miline.h"
++#include    "exa.h"
++#include    "exa_priv.h"
++
++
++// Functionality of BitBLT ROP register for Epson S1D13806 Graphics controller
++CARD8 epson13806Rop[16] = {
++    /* GXclear      */      0x00,         /* 0 */
++    /* GXand        */      0x08,         /* src AND dst */
++    /* GXandReverse */      0x04,         /* src AND NOT dst */
++    /* GXcopy       */      0x0C,         /* src */
++    /* GXandInverted*/      0x02,         /* NOT src AND dst */
++    /* GXnoop       */      0x0A,         /* dst */
++    /* GXxor        */      0x06,         /* src XOR dst */
++    /* GXor         */      0x0E,         /* src OR dst */
++    /* GXnor        */      0x01,         /* NOT src AND NOT dst */
++    /* GXequiv      */      0x09,         /* NOT src XOR dst */
++    /* GXinvert     */      0x05,         /* NOT dst */
++    /* GXorReverse  */      0x0D,         /* src OR NOT dst */
++    /* GXcopyInverted*/     0x03,         /* NOT src */
++    /* GXorInverted */      0x0B,         /* NOT src OR dst */
++    /* GXnand       */      0x07,         /* NOT src OR NOT dst */
++    /* GXset        */      0x0F,         /* 1 */
++};
++
++
++
++#undef __DEBUG_EPSON__
++#undef __DEBUG_EPSON_FBSET__
++#undef __DEBUG_EPSON_SOLID__
++#undef __DEBUG_EPSON_COPY__
++
++
++#ifdef __DEBUG_EPSON__
++    #define EPSON_DEBUG(a) a
++#else
++    #define EPSON_DEBUG(a)
++#endif
++
++#ifdef __DEBUG_EPSON_FBSET__
++    #define EPSON_DEBUG_FBSET(a) a
++#else
++    #define EPSON_DEBUG_FBSET(a)
++#endif
++
++#ifdef __DEBUG_EPSON_SOLID__
++    #define EPSON_DEBUG_SOLID(a) a
++#else
++    #define EPSON_DEBUG_SOLID(a)
++#endif
++
++#ifdef __DEBUG_EPSON_COPY__
++    #define EPSON_DEBUG_COPY(a) a
++#else
++    #define EPSON_DEBUG_COPY(a)
++#endif
++
++
++static unsigned int    byteStride;     // Distance between lines in the frame buffer (in bytes)
++static unsigned int    bytesPerPixel;
++static unsigned int    pixelStride;
++
++static unsigned char *regbase;
++
++/*
++ * epsonSet
++ *
++ * Description:    Sets Epson variables
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonSet (ScreenPtr pScreen)
++{
++    KdScreenPriv(pScreen);
++
++    EPSON_DEBUG_FBSET (fprintf(stderr,"+epsonSet\n"));
++
++    byteStride = pScreenPriv->screen->fb.byteStride;
++    bytesPerPixel = pScreenPriv->screen->fb.bitsPerPixel >> 3;
++    pixelStride = pScreenPriv->screen->fb.pixelStride;
++
++    EPSON_DEBUG_FBSET (fprintf(stderr,"byteStride:     [%x]\n", pScreenPriv->screen->fb.byteStride));
++    EPSON_DEBUG_FBSET (fprintf(stderr,"bytesPerPixel:  [%x]\n", pScreenPriv->screen->fb.bitsPerPixel >> 3));
++    EPSON_DEBUG_FBSET (fprintf(stderr,"pixelStride:    [%x]\n", pScreenPriv->screen->fb.pixelStride));
++
++    EPSON_DEBUG_FBSET (fprintf(stderr,"-epsonSet\n"));
++}
++
++
++/*
++ * epsonBg
++ *
++ * Description:    Sets background colour
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonBg (Pixel bg)
++{
++   EPSON13806_REG16(EPSON13806_BLTBGCOLOR) = bg;
++}
++
++
++/*
++ * epsonFg
++ *
++ * Description:    Sets foreground colour
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonFg (Pixel fg)
++{
++    EPSON13806_REG16(EPSON13806_BLTFGCOLOR) = fg;
++}
++
++
++/*
++ * epsonWaitForHwBltDone
++ *
++ * Description:    Wait for previous blt to be done before programming any blt registers
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonWaitForHwBltDone (void)
++{
++    while (EPSON13806_REG (EPSON13806_BLTCTRL0) & EPSON13806_BLTCTRL0_ACTIVE) {}
++}
++
++
++/*
++ * epsonDrawSync
++ *
++ * Description:    Sync hardware acceleration
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonWaitMarker (ScreenPtr pScreen, int marker)
++{
++    EPSON_DEBUG (fprintf(stderr,"+epsonDrawSync\n"));
++
++    epsonWaitForHwBltDone ();
++
++    EPSON_DEBUG (fprintf(stderr,"-epsonDrawSync\n"));
++}
++
++
++/*
++ * epsonPrepareSolid
++ *
++ * Description:    Prepare Solid Fill i.e, can it be accelerated
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static Bool
++epsonPrepareSolid (PixmapPtr pPixmap,
++                   int       alu,
++                   Pixel     pm,
++                   Pixel     fg)
++{
++    FbBits  depthMask;
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"+epsonPrepareSolid\n"));
++
++    depthMask = FbFullMask(pPixmap->drawable.depth);
++    if ((pm & depthMask) != depthMask)
++        return FALSE;
++
++	epsonSet (pPixmap->drawable.pScreen);
++    fg &= 0xffff;
++    epsonFg (fg);
++    epsonBg (fg);
++
++    epsonWaitForHwBltDone ();
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"Solid.alu [0x%x], [%d]\n", alu ,epson13806Rop[alu]));
++    EPSON13806_REG(EPSON13806_BLTROP) = epson13806Rop[alu];
++
++    if (epson13806Rop[alu] == GXnoop)
++    {
++        EPSON13806_REG(EPSON13806_BLTOPERATION) = EPSON13806_BLTOPERATION_PATFILLROP;
++    }
++    else
++    {
++        EPSON13806_REG(EPSON13806_BLTOPERATION) = EPSON13806_BLTOPERATION_SOLIDFILL;
++    }
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"-epsonPrepareSolid\n"));
++    return TRUE;
++}
++
++
++/*
++ * epsonSolid
++ *
++ * Description:    Executes Solid Fill
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonSolid (PixmapPtr pPix, int x1, int y1, int x2, int y2)
++{
++    CARD32  dst_addr;
++    int width, height;
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"+epsonSolid\n"));
++    EPSON_DEBUG_SOLID (fprintf(stderr,"Solid X1 [%d] Y1 [%d] X2 [%d] Y2 [%d]\n", x1, y1, x2, y2));
++
++    dst_addr = y1 * byteStride + x1 * bytesPerPixel;
++    width = ((x2 - x1)-1);
++    height = ((y2 - y1)-1);
++
++    // program dst address
++    EPSON13806_REG16(EPSON13806_BLTDSTSTART01) = dst_addr;
++    EPSON13806_REG(EPSON13806_BLTDSTSTART2) = dst_addr >> 16;
++
++    // program width and height of blit
++    EPSON13806_REG16(EPSON13806_BLTWIDTH) = width;
++    EPSON13806_REG16(EPSON13806_BLTHEIGHT) = height;
++
++    EPSON13806_REG(EPSON13806_BLTCTRL0) = EPSON13806_BLTCTRL0_ACTIVE;
++
++    // Wait for operation to complete
++    while (EPSON13806_REG(EPSON13806_BLTCTRL0) & EPSON13806_BLTCTRL0_ACTIVE) {}
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"-epsonSolid\n"));
++}
++
++
++/*
++ * epsonDoneSolid
++ *
++ * Description:    Done Solid
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonDoneSolid (PixmapPtr pPix)
++{
++    EPSON_DEBUG_SOLID (fprintf(stderr,"+epsonDoneSolid\n"));
++
++    // Read from BitBLT data offset 0 to shut it down
++    //(void)EPSON13806_REG(EPSON13806_BITBLTDATA);
++
++    EPSON_DEBUG_SOLID (fprintf(stderr,"-epsonDoneSolid\n"));
++}
++
++
++/*
++ * epsonPrepareCopy
++ *
++ * Description:    Prepares BitBLT, i.e, can it be accelerated
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static Bool
++epsonPrepareCopy (PixmapPtr    pSrcPixmap,
++          PixmapPtr    pDstPixmap,
++          int        dx,
++          int        dy,
++          int        alu,
++          Pixel        pm)
++{
++    FbBits  depthMask;
++
++    EPSON_DEBUG_COPY (fprintf(stderr,"+epsonPrepareCopy dx [0x%x] dy [0x%x]\n", dx, dy));
++
++    depthMask = FbFullMask(pDstPixmap->drawable.depth);
++
++    if ((pm & depthMask) != depthMask)
++        return FALSE;
++
++    epsonSet (pDstPixmap->drawable.pScreen);
++	epsonWaitForHwBltDone ();
++    EPSON13806_REG(EPSON13806_BLTROP) = epson13806Rop[alu];
++
++    EPSON_DEBUG_COPY (fprintf(stderr,"-epsonPrepareCopy\n"));
++
++    return TRUE;
++}
++
++
++/*
++ * epsonCopy
++ *
++ * Description:    Executes BitBLT
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonCopy (PixmapPtr pDst,
++           int srcX,
++           int srcY,
++           int dstX,
++           int dstY,
++           int width,
++           int height)
++{
++    int    src_addr, dst_addr;
++    int neg_dir = FALSE;
++
++    EPSON_DEBUG_COPY (fprintf(stderr,"+epsonCopy\n"));
++
++    if (!width || !height)
++        return;
++
++    src_addr = srcX * bytesPerPixel + srcY * byteStride;
++    dst_addr = dstX * bytesPerPixel + dstY * byteStride;
++
++    /*
++     * See if regions overlap and dest region is beyond source region.
++     * If so, we need to do a move BLT in negative direction. Only applies
++     * if the BLT is not transparent.
++     */
++
++    if ((srcX + width  > dstX) && (srcX < dstX + width) &&
++        (srcY + height > dstY) && (srcY < dstY + height) &&
++        (dst_addr > src_addr))
++    {
++        neg_dir = TRUE;
++
++        // negative direction : get the coords of lower right corner
++        src_addr += byteStride * (height-1) + bytesPerPixel * (width-1);
++        dst_addr += byteStride * (height-1) + bytesPerPixel * (width-1);
++    }
++
++    // program BLIT memory offset
++    EPSON13806_REG16(EPSON13806_BLTSTRIDE) = byteStride/2;
++
++    // program src and dst addresses
++    EPSON13806_REG16(EPSON13806_BLTSRCSTART01) = src_addr;
++    EPSON13806_REG(EPSON13806_BLTSRCSTART2) = src_addr >> 16;
++    EPSON13806_REG16(EPSON13806_BLTDSTSTART01) = dst_addr;
++    EPSON13806_REG(EPSON13806_BLTDSTSTART2) = dst_addr >> 16;
++
++    // program width and height of blit
++    EPSON13806_REG16(EPSON13806_BLTWIDTH) = width-1;
++    EPSON13806_REG16(EPSON13806_BLTHEIGHT) = height-1;
++
++    // select pos/neg move BLIT
++    EPSON13806_REG(EPSON13806_BLTOPERATION) = neg_dir ?
++                EPSON13806_BLTOPERATION_MOVENEGROP : EPSON13806_BLTOPERATION_MOVEPOSROP;
++
++    EPSON13806_REG(EPSON13806_BLTCTRL0) = EPSON13806_BLTCTRL0_ACTIVE;
++
++    // Wait for operation to complete
++    while (EPSON13806_REG(EPSON13806_BLTCTRL0) & EPSON13806_BLTCTRL0_ACTIVE) {}
++
++    EPSON_DEBUG_COPY (fprintf(stderr,"-epsonCopy\n"));
++}
++
++
++/*
++ * epsonDoneCopy
++ *
++ * Description:    Done Copy
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++static void
++epsonDoneCopy (PixmapPtr pDst)
++{
++    EPSON_DEBUG_COPY (fprintf(stderr,"+epsonDoneCopy\n"));
++
++    // Read from BitBLT data offset 0 to shut it down
++    //(void)EPSON13806_REG(EPSON13806_BITBLTDATA);
++
++    EPSON_DEBUG_COPY (fprintf(stderr,"-epsonDoneCopy\n"));
++}
++
++
++/*
++ * epsonDrawInit
++ *
++ * Description:    Configure the Epson S1D13806 for a 800x600 TFT colour display
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++Bool
++epsonDrawInit (ScreenPtr pScreen)
++{
++    KdScreenPriv(pScreen);
++    KdScreenInfo *screen = pScreenPriv->screen;
++    EpsonScrPriv *epsons = screen->driver;
++    static int addr = 0x00000000;
++
++    EPSON_DEBUG (fprintf(stderr,"+epsonDrawInit\n"));
++
++    epsonSet(pScreen);
++
++#if 0
++    EPSON13806_REG(EPSON13806_MISC) = 0x00;
++    EPSON13806_REG(EPSON13806_DISPMODE) = 0x00;
++    EPSON13806_REG16(EPSON13806_GPIOCFG) = 0xffff;
++    EPSON13806_REG16(EPSON13806_GPIOCTRL) = 0x0001;
++
++    EPSON13806_REG(EPSON13806_MEMCLKCFG) = 0x01;
++    EPSON13806_REG(EPSON13806_LCDPCLKCFG) = 0x00;
++    EPSON13806_REG(EPSON13806_CRTPCLKCFG) = 0x02;
++    EPSON13806_REG(EPSON13806_MPCLKCFG) = 0x02;
++    EPSON13806_REG(EPSON13806_CPUMEMWAITSEL) = 0x01;
++    EPSON13806_REG(EPSON13806_MEMCFG) = 0x80;
++    EPSON13806_REG(EPSON13806_DRAMREFRESH) = 0x03;
++    EPSON13806_REG16(EPSON13806_DRAMTIMINGCTRL) = 0x0100;
++
++    // 5ms delay for internal LCD SDRAM to initialize
++    usleep(5000);
++
++    EPSON13806_REG(EPSON13806_PANELTYPE) = 0x25;
++    EPSON13806_REG(EPSON13806_MODRATE) = 0x00;
++    EPSON13806_REG(EPSON13806_LCDHDP) = 0x63;
++    EPSON13806_REG(EPSON13806_LCDHNDP) = 0x1f;
++    EPSON13806_REG(EPSON13806_TFTFPLINESTART) = 0x01;
++    EPSON13806_REG(EPSON13806_TFTFPLINEPULSE) = 0x0b;
++    EPSON13806_REG16(EPSON13806_LCDVDP0) = 0x0257;
++    EPSON13806_REG(EPSON13806_LCDVNDP) = 0x1b;
++    EPSON13806_REG(EPSON13806_TFTFPFRAMESTART) = 0x0a;
++    EPSON13806_REG(EPSON13806_TFTFPFRAMEPULSE) = 0x01;
++    EPSON13806_REG(EPSON13806_LCDDISPMODE) = 0x85;
++    EPSON13806_REG(EPSON13806_LCDMISC) = 0x00;
++    EPSON13806_REG16(EPSON13806_LCDSTART01) = 0x0000;
++    EPSON13806_REG(EPSON13806_LCDSTART2) = 0x00;
++    EPSON13806_REG16(EPSON13806_LCDSTRIDE) = byteStride>>1;
++    EPSON13806_REG(EPSON13806_LCDPIXELPAN) = 0x00;
++    EPSON13806_REG(EPSON13806_LCDFIFOHIGH) = 0x00;
++    EPSON13806_REG(EPSON13806_LCDFIFOLOW) = 0x00;
++#endif
++
++
++    EPSON13806_REG(EPSON13806_BLTCTRL0) = 0x00;
++    EPSON13806_REG(EPSON13806_BLTCTRL1) = 0x01;     // We're using 16 bpp
++    EPSON13806_REG16(EPSON13806_BLTSTRIDE) = byteStride>>1; // program BLIT memory offset
++
++#if 0
++    EPSON13806_REG(EPSON13806_LUTMODE) = 0x00;
++    EPSON13806_REG(EPSON13806_LUTADDR) = 0x00;
++    EPSON13806_REG(EPSON13806_PWRSAVECFG) = 0x10;
++    EPSON13806_REG(EPSON13806_PWRSAVESTATUS) = 0x00;
++    EPSON13806_REG(EPSON13806_CPUMEMWATCHDOG) = 0x00;
++    EPSON13806_REG(EPSON13806_DISPMODE) = 0x01;
++
++    // Enable backlight voltage
++    EPSON13806_REG16(EPSON13806_GPIOCTRL) |= 1<<1;
++    // 10ms delay after turning on LCD.
++    usleep(10000);
++#endif
++
++    // Instruct the BitBLT unit to fill the screen with black, i.e clear fb.
++    EPSON13806_REG16(EPSON13806_BLTDSTSTART01) = addr;
++    EPSON13806_REG(EPSON13806_BLTDSTSTART2) = addr >> 16;
++    EPSON13806_REG16(EPSON13806_BLTFGCOLOR) = 0x0000;
++    EPSON13806_REG(EPSON13806_BLTOPERATION) = EPSON13806_BLTOPERATION_SOLIDFILL; // solid fill blt
++    EPSON13806_REG16(EPSON13806_BLTWIDTH) = (0x0320-1);
++    EPSON13806_REG16(EPSON13806_BLTHEIGHT) = (0x0258-1);
++    EPSON13806_REG(EPSON13806_BLTCTRL0) = EPSON13806_BLTCTRL0_ACTIVE;
++
++#if 0
++    // Enable LCD data
++    EPSON13806_REG(EPSON13806_LCDDISPMODE) &= ~(1<<7);
++
++    // Turn on backlight full
++    EPSON13806_REG16(EPSON13806_GPIOCTRL) |= 0x00fc;
++#endif
++
++    memset(&epsons->exa, 0, sizeof(ExaDriverRec));
++    epsons->exa.exa_major = 2;
++    epsons->exa.exa_minor = 0;
++
++    epsons->exa.PrepareSolid	= epsonPrepareSolid;
++    epsons->exa.Solid		= epsonSolid;
++    epsons->exa.DoneSolid	= epsonDoneSolid;
++
++    epsons->exa.PrepareCopy	= epsonPrepareCopy;
++    epsons->exa.Copy		= epsonCopy;
++    epsons->exa.DoneCopy	= epsonDoneCopy;
++
++    epsons->exa.WaitMarker	= epsonWaitMarker;
++
++    epsons->exa.flags		= EXA_OFFSCREEN_PIXMAPS;
++
++    if (!exaDriverInit (pScreen, &epsons->exa)) {
++        ErrorF("Failed to initialize EXA\n");
++        return FALSE;
++    }
++
++    EPSON_DEBUG (fprintf(stderr,"-epsonDrawInit\n"));
++    return TRUE;
++}
++
++
++/*
++ * epsonDrawEnable
++ *
++ * Description:    Enables hardware acceleration
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++void
++epsonDrawEnable (ScreenPtr pScreen)
++{
++    EPSON_DEBUG (fprintf(stderr,"+epsonDrawEnable\n"));
++    epsonWaitForHwBltDone ();
++    exaMarkSync (pScreen);
++    EPSON_DEBUG (fprintf(stderr,"-epsonDrawEnable\n"));
++}
++
++
++/*
++ * epsonDrawDisable
++ *
++ * Description:    Disables hardware acceleration
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++void
++epsonDrawDisable (ScreenPtr pScreen)
++{
++    EPSON_DEBUG (fprintf(stderr,"+epsonDrawDisable\n"));
++}
++
++
++/*
++ * epsonDrawFini
++ *
++ * Description:    Finish hardware acceleration
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++void
++epsonDrawFini (ScreenPtr pScreen)
++{
++    EPSON_DEBUG (fprintf(stderr,"+epsonDrawFini\n"));
++}
++
++
++/*
++ * initEpson13806
++ *
++ * Description:    Maps Epson S1D13806 registers
++ *
++ * History:
++ * 11-Feb-04  C.Stylianou       NBL: Created.
++ *
++ */
++
++void
++initEpson13806(void)
++{
++    EPSON_DEBUG (fprintf(stderr,"+initEpson\n"));
++
++    // Map Epson S1D13806 registers
++    regbase = epsonMapDevice (EPSON13806_PHYSICAL_REG_ADDR, EPSON13806_GPIO_REGSIZE);
++    if (!regbase)
++        perror("ERROR: regbase\n");   // Sets up register mappings in header files.
++
++#if 0
++    CARD8 rev_code;
++    rev_code = EPSON13806_REG (EPSON13806_REVCODE);
++    if ((rev_code >> 2) != 0x07)
++        perror("ERROR: EPSON13806 Display Controller NOT FOUND!\n");
++#endif
++
++    EPSON_DEBUG (fprintf(stderr,"-initEpson\n"));
++}
++
++/**
++ * exaDDXDriverInit is required by the top-level EXA module, and is used by
++ * the xorg DDX to hook in its EnableDisableFB wrapper.  We don't need it, since
++ * we won't be enabling/disabling the FB.
++ */
++void
++exaDDXDriverInit(ScreenPtr pScreen)
++{
++    ExaScreenPriv(pScreen);
++
++    pExaScr->migration = ExaMigrationSmart;
++    pExaScr->checkDirtyCorrectness = TRUE;
++}
+diff --git a/hw/kdrive/epson/epson13806draw.h b/hw/kdrive/epson/epson13806draw.h
+new file mode 100644
+index 0000000..11fc357
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806draw.h
+@@ -0,0 +1,122 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806draw.h - Implementation of hard ware accelerated functions for epson S1D13806
++ *               Graphic controller.
++ *
++ * History:
++ * 28-Jan-04  C.Stylianou       PRJ NBL: Created from chipsdraw.h
++ *
++ */
++
++#ifndef _EPSON13806DRAW_H_
++#define _EPSON13806DRAW_H_
++
++
++/*
++ * offset from ioport beginning
++ */
++
++
++#define SetupEpson(s)  KdScreenPriv(s); \
++		    epsonCardInfo(pScreenPriv); \
++		    EpsonPtr epson = epsonc->epson
++
++
++typedef volatile CARD8	VOL8;
++typedef volatile CARD16	VOL16;
++typedef volatile CARD32	VOL32;
++
++typedef struct _epsonSave {
++    int	    dummy;
++} EpsonSave;
++
++typedef struct _epsonCardInfo {
++    EpsonPriv    epson;
++    CARD32		*window;
++    Bool		mmio;
++    EpsonSave		save;
++} epsonCardInfo;
++
++#define getEpsonCardInfo(kd)  ((epsonCardInfo *) ((kd)->card->driver))
++#define epsonCardInfo(kd)	    epsonCardInfo	*epsonc = getEpsonCardInfo(kd)
++
++typedef struct _epsonCursor {
++    int		width, height;
++    int		xhot, yhot;
++    Bool	has_cursor;
++    CursorPtr	pCursor;
++    Pixel	source, mask;
++} EpsonCursor;
++
++#define epson_CURSOR_WIDTH	64
++#define epson_CURSOR_HEIGHT	64
++
++typedef struct _epsonScreenInfo {
++    EpsonScrPriv    epson;
++    CARD8	    *cursor_base;
++    CARD8	    *screen;
++    CARD8	    *off_screen;
++    int		    off_screen_size;
++    EpsonCursor   cursor;
++    void       *regbase_virt;
++} EpsonScreenInfo;
++
++#define getEpsonScreenInfo(kd) ((EpsonScreenInfo *) ((kd)->screen->driver))
++#define epsonScreenInfo(kd)    EpsonScreenInfo *epsons = getEpsonScreenInfo(kd)
++
++Bool
++epsonDrawInit (ScreenPtr pScreen);
++
++void
++epsonDrawEnable (ScreenPtr pScreen);
++
++void
++epsonDrawSync (ScreenPtr pScreen);
++
++void
++epsonDrawDisable (ScreenPtr pScreen);
++
++void
++epsonDrawFini (ScreenPtr pScreen);
++
++Bool
++epsonCursorInit (ScreenPtr pScreen);
++
++void
++epsonCursorEnable (ScreenPtr pScreen);
++
++void
++epsonCursorDisable (ScreenPtr pScreen);
++
++void
++epsonCursorFini (ScreenPtr pScreen);
++
++void
++epsonRecolorCursor (ScreenPtr pScreen, int ndef, xColorItem *pdef);
++
++void
++exaDDXDriverInit(ScreenPtr pScreen);
++
++extern KdCardFuncs  epsonFuncs;
++
++#endif
+diff --git a/hw/kdrive/epson/epson13806reg.h b/hw/kdrive/epson/epson13806reg.h
+new file mode 100644
+index 0000000..91415ed
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806reg.h
+@@ -0,0 +1,183 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806reg.h         Epson S1D13806 LCD controller header file.
++ *
++ * History:
++ * 15-Feb-04  C.Stylianou       PRJ NBL: Created.
++ *
++ */
++
++
++#ifndef EPSON13806REG_H
++#define EPSON13806REG_H
++
++
++#define TT_UNUSED(x) ((void) (x))
++
++
++#define EPSON13806_PHYSICAL_REG_ADDR   0x14000000
++#define EPSON13806_GPIO_REGSIZE        0x001f0000
++
++#define EPSON13806_PHYSICAL_VMEM_ADDR  0x14200000
++#define EPSON13806_VMEM_SIZE           0x140000
++
++#define PLATFORM_EPSON13806_BASE    (regbase)
++#define EPSON13806_REG_BASE         (PLATFORM_EPSON13806_BASE + 0x000000)   // Register base address
++#define EPSON13806_SDRAM_BASE       (PLATFORM_EPSON13806_BASE + 0x200000)   // SDRAM base address
++
++//////////////////////////////////////////////////////////////////////////////////////////
++// Register Offsets
++//////////////////////////////////////////////////////////////////////////////////////////
++#define EPSON13806_REVCODE              (EPSON13806_REG_BASE + 0x0000)  // Revision Code Register
++#define EPSON13806_MISC                 (EPSON13806_REG_BASE + 0x0001)  // Miscellaneous Register
++#define EPSON13806_GPIOCFG              (EPSON13806_REG_BASE + 0x0004)  // General IO Pins Configuration Register (16 bits)
++#define EPSON13806_GPIOCFG0             (EPSON13806_REG_BASE + 0x0004)  // General IO Pins Configuration Register 0
++#define EPSON13806_GPIOCFG1             (EPSON13806_REG_BASE + 0x0005)  // General IO Pins Configuration Register 1
++#define EPSON13806_GPIOCTRL             (EPSON13806_REG_BASE + 0x0008)  // General IO Pins Control Register (16 bits)
++#define EPSON13806_GPIOCTRL0            (EPSON13806_REG_BASE + 0x0008)  // General IO Pins Control Register 0
++#define EPSON13806_GPIOCTRL1            (EPSON13806_REG_BASE + 0x0009)  // General IO Pins Control Register 1
++#define EPSON13806_MDCFGSTATUS          (EPSON13806_REG_BASE + 0x000C)  // Configuration Status Register
++#define EPSON13806_MEMCLKCFG            (EPSON13806_REG_BASE + 0x0010)  // Memory Clock Configuration Register
++#define EPSON13806_LCDPCLKCFG           (EPSON13806_REG_BASE + 0x0014)  // LCD Pixel Clock Configuration Register
++#define EPSON13806_CRTPCLKCFG           (EPSON13806_REG_BASE + 0x0018)  // CRT/TV Clock Configuration Register
++#define EPSON13806_MPCLKCFG             (EPSON13806_REG_BASE + 0x001C)  // MediaPlug Clock Configuration Register
++#define EPSON13806_CPUMEMWAITSEL        (EPSON13806_REG_BASE + 0x001E)  // CPU To Memory Wait State Select Register
++#define EPSON13806_MEMCFG               (EPSON13806_REG_BASE + 0x0020)  // Memory Configuration Register
++#define EPSON13806_DRAMREFRESH          (EPSON13806_REG_BASE + 0x0021)  // DRAM Refresh Rate Register
++#define EPSON13806_DRAMTIMINGCTRL       (EPSON13806_REG_BASE + 0x002A)  // DRAM Timings Control Register (16 bits)
++#define EPSON13806_DRAMTIMINGCTRL0      (EPSON13806_REG_BASE + 0x002A)  // DRAM Timings Control Register 0
++#define EPSON13806_DRAMTIMINGCTRL1      (EPSON13806_REG_BASE + 0x002B)  // DRAM Timings Control Register 1
++#define EPSON13806_PANELTYPE            (EPSON13806_REG_BASE + 0x0030)  // Panel Type Register
++#define EPSON13806_MODRATE              (EPSON13806_REG_BASE + 0x0031)  // MOD Rate Register
++#define EPSON13806_LCDHDP               (EPSON13806_REG_BASE + 0x0032)  // LCD Horizontal Display Width Register
++#define EPSON13806_LCDHNDP              (EPSON13806_REG_BASE + 0x0034)  // LCD Horizontal Non-Display Period Register
++#define EPSON13806_TFTFPLINESTART       (EPSON13806_REG_BASE + 0x0035)  // TFT FPLINE Start Position Register
++#define EPSON13806_TFTFPLINEPULSE       (EPSON13806_REG_BASE + 0x0036)  // TFT FPLINE Pulse Width Register
++#define EPSON13806_LCDVDP               (EPSON13806_REG_BASE + 0x0038)  // LCD Vertical Display Height Register (16 bits)
++#define EPSON13806_LCDVDP0              (EPSON13806_REG_BASE + 0x0038)  // LCD Vertical Display Height Register 0
++#define EPSON13806_LCDVDP1              (EPSON13806_REG_BASE + 0x0039)  // LCD Vertical Display Height Register 1
++#define EPSON13806_LCDVNDP              (EPSON13806_REG_BASE + 0x003A)  // LCD Vertical Non-Display Period Register
++#define EPSON13806_TFTFPFRAMESTART      (EPSON13806_REG_BASE + 0x003B)  // TFT FPFRAME Start Position Register
++#define EPSON13806_TFTFPFRAMEPULSE      (EPSON13806_REG_BASE + 0x003C)  // TFT FPFRAME Pulse Width Register
++#define EPSON13806_LCDLINECOUNT         (EPSON13806_REG_BASE + 0x003E)  // LCD Line Count Register (16 bits)
++#define EPSON13806_LCDLINECOUNT0        (EPSON13806_REG_BASE + 0x003E)  // LCD Line Count Register 0
++#define EPSON13806_LCDLINECOUNT1        (EPSON13806_REG_BASE + 0x003F)  // LCD Line Count Register 1
++#define EPSON13806_LCDDISPMODE          (EPSON13806_REG_BASE + 0x0040)  // LCD Display Mode Register
++#define EPSON13806_LCDMISC              (EPSON13806_REG_BASE + 0x0041)  // LCD Miscellaneous Register
++#define EPSON13806_LCDSTART01           (EPSON13806_REG_BASE + 0x0042)  // LCD Display Start Address Register 0 and 1 (16 bits)
++#define EPSON13806_LCDSTART0            (EPSON13806_REG_BASE + 0x0042)  // LCD Display Start Address Register 0
++#define EPSON13806_LCDSTART1            (EPSON13806_REG_BASE + 0x0043)  // LCD Display Start Address Register 1
++#define EPSON13806_LCDSTART2            (EPSON13806_REG_BASE + 0x0044)  // LCD Display Start Address Register 2
++#define EPSON13806_LCDSTRIDE            (EPSON13806_REG_BASE + 0x0046)  // LCD Memory Address Offset Register (16 bits)
++#define EPSON13806_LCDSTRIDE0           (EPSON13806_REG_BASE + 0x0046)  // LCD Memory Address Offset Register 0
++#define EPSON13806_LCDSTRIDE1           (EPSON13806_REG_BASE + 0x0047)  // LCD Memory Address Offset Register 1
++#define EPSON13806_LCDPIXELPAN          (EPSON13806_REG_BASE + 0x0048)  // LCD Pixel Panning Register
++#define EPSON13806_LCDFIFOHIGH          (EPSON13806_REG_BASE + 0x004A)  // LCD Display FIFO High Threshold Control Register
++#define EPSON13806_LCDFIFOLOW           (EPSON13806_REG_BASE + 0x004B)  // LCD Display FIFO Low Threshold Control Register
++
++#define EPSON13806_LCDINKCURSCTRL       (EPSON13806_REG_BASE + 0x0070)  // LCD INK/Cursor Control Register
++#define EPSON13806_LCDINKCURSSTART      (EPSON13806_REG_BASE + 0x0071)  // LCD INK/Cursor Start Address Register
++#define EPSON13806_LCDCURSORXPOS        (EPSON13806_REG_BASE + 0x0072)  // LCD Cursor X Position Register (16 bits)
++#define EPSON13806_LCDCURSORXPOS0       (EPSON13806_REG_BASE + 0x0072)  // LCD Cursor X Position Register 0
++#define EPSON13806_LCDCURSORXPOS1       (EPSON13806_REG_BASE + 0x0073)  // LCD Cursor X Position Register 1
++#define EPSON13806_LCDCURSORYPOS        (EPSON13806_REG_BASE + 0x0074)  // LCD Cursor Y Position Register (16 bits)
++#define EPSON13806_LCDCURSORYPOS0       (EPSON13806_REG_BASE + 0x0074)  // LCD Cursor Y Position Register 0
++#define EPSON13806_LCDCURSORYPOS1       (EPSON13806_REG_BASE + 0x0075)  // LCD Cursor Y Position Register 1
++#define EPSON13806_LCDINKCURSBLUE0      (EPSON13806_REG_BASE + 0x0076)  // LCD INK/Cursor Blue Color 0 Register
++#define EPSON13806_LCDINKCURSGREEN0     (EPSON13806_REG_BASE + 0x0077)  // LCD INK/Cursor Green Color 0 Register
++#define EPSON13806_LCDINKCURSRED0       (EPSON13806_REG_BASE + 0x0078)  // LCD INK/Cursor Red Color 0 Register
++#define EPSON13806_LCDINKCURSBLUE1      (EPSON13806_REG_BASE + 0x007A)  // LCD INK/Cursor Blue Color 1 Register
++#define EPSON13806_LCDINKCURSGREEN1     (EPSON13806_REG_BASE + 0x007B)  // LCD INK/Cursor Green Colour 1 Register
++#define EPSON13806_LCDINKCURSRED1       (EPSON13806_REG_BASE + 0x007C)  // LCD INK/Cursor Red Color 1 Register
++#define EPSON13806_LCDINKCURSFIFO       (EPSON13806_REG_BASE + 0x007E)  // LCD INK/Cursor FIFO Threshold Register
++
++#define EPSON13806_BLTCTRL0             (EPSON13806_REG_BASE + 0x0100)  // BitBlt Control Register 0
++#define EPSON13806_BLTCTRL1             (EPSON13806_REG_BASE + 0x0101)  // BitBlt Control Register 1
++#define EPSON13806_BLTROP               (EPSON13806_REG_BASE + 0x0102)  // BitBlt ROP Code/Color Expansion Register
++#define EPSON13806_BLTOPERATION         (EPSON13806_REG_BASE + 0x0103)  // BitBlt Operation Register
++#define EPSON13806_BLTSRCSTART01        (EPSON13806_REG_BASE + 0x0104)  // BitBlt Source Start Address Register 0 and 1 (16 bits)
++#define EPSON13806_BLTSRCSTART0         (EPSON13806_REG_BASE + 0x0104)  // BitBlt Source Start Address Register 0
++#define EPSON13806_BLTSRCSTART1         (EPSON13806_REG_BASE + 0x0105)  // BitBlt Source Start Address Register 1
++#define EPSON13806_BLTSRCSTART2         (EPSON13806_REG_BASE + 0x0106)  // BitBlt Source Start Address Register 2
++#define EPSON13806_BLTDSTSTART01        (EPSON13806_REG_BASE + 0x0108)  // BitBlt Destination Start Address Register 0 and 1 (16 bits)
++#define EPSON13806_BLTDSTSTART0         (EPSON13806_REG_BASE + 0x0108)  // BitBlt Destination Start Address Register 0
++#define EPSON13806_BLTDSTSTART1         (EPSON13806_REG_BASE + 0x0109)  // BitBlt Destination Start Address Register 1
++#define EPSON13806_BLTDSTSTART2         (EPSON13806_REG_BASE + 0x010A)  // BitBlt Destination Start Address Register 2
++#define EPSON13806_BLTSTRIDE            (EPSON13806_REG_BASE + 0x010C)  // BitBlt Memory Address Offset Register (16 bits)
++#define EPSON13806_BLTSTRIDE0           (EPSON13806_REG_BASE + 0x010C)  // BitBlt Memory Address Offset Register 0
++#define EPSON13806_BLTSTRIDE1           (EPSON13806_REG_BASE + 0x010D)  // BitBlt Memory Address Offset Register 1
++#define EPSON13806_BLTWIDTH             (EPSON13806_REG_BASE + 0x0110)  // BitBlt Width Register (16 bits)
++#define EPSON13806_BLTWIDTH0            (EPSON13806_REG_BASE + 0x0110)  // BitBlt Width Register 0
++#define EPSON13806_BLTWIDTH1            (EPSON13806_REG_BASE + 0x0111)  // BitBlt Width Register 1
++#define EPSON13806_BLTHEIGHT            (EPSON13806_REG_BASE + 0x0112)  // BitBlt Height Register (16 bits)
++#define EPSON13806_BLTHEIGHT0           (EPSON13806_REG_BASE + 0x0112)  // BitBlt Height Register 0
++#define EPSON13806_BLTHEIGHT1           (EPSON13806_REG_BASE + 0x0113)  // BitBlt Height Register 1
++#define EPSON13806_BLTBGCOLOR           (EPSON13806_REG_BASE + 0x0114)  // BitBlt Background Color Register (16 bits)
++#define EPSON13806_BLTBGCOLOR0          (EPSON13806_REG_BASE + 0x0114)  // BitBlt Background Color Register 0
++#define EPSON13806_BLTBGCOLOR1          (EPSON13806_REG_BASE + 0x0115)  // BitBlt Background Color Register 1
++#define EPSON13806_BLTFGCOLOR           (EPSON13806_REG_BASE + 0x0118)  // BitBlt Foreground Color Register (16 bits)
++#define EPSON13806_BLTFGCOLOR0          (EPSON13806_REG_BASE + 0x0118)  // BitBlt Foreground Color Register 0
++#define EPSON13806_BLTFGCOLOR1          (EPSON13806_REG_BASE + 0x0119)  // BitBlt Foreground Color Register 0
++
++#define EPSON13806_LUTMODE              (EPSON13806_REG_BASE + 0x01E0)  // Look-Up Table Mode Register
++#define EPSON13806_LUTADDR              (EPSON13806_REG_BASE + 0x01E2)  // Look-Up Table Address Register
++#define EPSON13806_LUTDATA              (EPSON13806_REG_BASE + 0x01E4)  // Look-Up Table Data Register
++#define EPSON13806_PWRSAVECFG           (EPSON13806_REG_BASE + 0x01F0)  // Power Save Configuration Register
++#define EPSON13806_PWRSAVESTATUS        (EPSON13806_REG_BASE + 0x01F1)  // Power Save Status Register
++#define EPSON13806_CPUMEMWATCHDOG       (EPSON13806_REG_BASE + 0x01F4)  // CPU-to-Memory Access Watchdog Timer Register
++#define EPSON13806_DISPMODE             (EPSON13806_REG_BASE + 0x01FC)  // Display Mode Register
++
++#define EPSON13806_MEDIALCMD            (EPSON13806_REG_BASE + 0x1000)  // MediaPlug LCMD Register
++#define EPSON13806_MEDIARESERVEDLCMD    (EPSON13806_REG_BASE + 0x1002)  // MediaPlug Reserved LCMD Register
++#define EPSON13806_MEDIACMD             (EPSON13806_REG_BASE + 0x1004)  // MediaPlug CMD Register
++#define EPSON13806_MEDIARESERVEDCMD     (EPSON13806_REG_BASE + 0x1006)  // MediaPlug Reserved CMD Register
++#define EPSON13806_MEDIADATA            (EPSON13806_REG_BASE + 0x1008)  // MediaPlug Data Registers (base)
++
++#define EPSON13806_BITBLTDATA           (EPSON13806_REG_BASE + 0x100000)    // BitBLT Data Registers (base)
++
++// BLTCTRL0 register defines
++#define EPSON13806_BLTCTRL0_ACTIVE      (1<<7)  // Read: 1=busy, 0=idle / Write: 1=start, 0=no change
++
++// BLTOPERATION register defines
++#define EPSON13806_BLTOPERATION_WRITEROP            (0x00)  // Write BitBLT with ROP
++#define EPSON13806_BLTOPERATION_READ                (0x01)  // Read BitBLT
++#define EPSON13806_BLTOPERATION_MOVEPOSROP          (0x02)  // Move BitBLT in positive direction with ROP
++#define EPSON13806_BLTOPERATION_MOVENEGROP          (0x03)  // Move BitBLT in negative direction with ROP
++#define EPSON13806_BLTOPERATION_TRANSWRITE          (0x04)  // Transparent Write BitBLT
++#define EPSON13806_BLTOPERATION_TRANSMOVEPOS        (0x05)  // Transparent Move BitBLT in positive direction
++#define EPSON13806_BLTOPERATION_PATFILLROP          (0x06)  // Pattern fill with ROP
++#define EPSON13806_BLTOPERATION_PATFILLTRANS        (0x07)  // Pattern fill with transparency
++#define EPSON13806_BLTOPERATION_COLOREXP            (0x08)  // Color expansion
++#define EPSON13806_BLTOPERATION_COLOREXPTRANS       (0x09)  // Color expansion with transparency
++#define EPSON13806_BLTOPERATION_MOVECOLOREXP        (0x0A)  // Move BitBLT with color expansion
++#define EPSON13806_BLTOPERATION_MOVECOLOREXPTRANS   (0x0B)  // Move BitBLT with color expansion and transparency
++#define EPSON13806_BLTOPERATION_SOLIDFILL           (0x0C)  // Solid fill
++
++//////////////////////////////////////////////////////////////////////////////////////////
++// Epson register access macros
++//////////////////////////////////////////////////////////////////////////////////////////
++#define EPSON13806_REG(address)   *(VOL8 *)(address)
++#define EPSON13806_REG16(address) *(VOL16 *)(address)
++
++
++#endif  // EPSON13806
+diff --git a/hw/kdrive/epson/epson13806stub.c b/hw/kdrive/epson/epson13806stub.c
+new file mode 100644
+index 0000000..dfc1fae
+--- /dev/null
++++ b/hw/kdrive/epson/epson13806stub.c
+@@ -0,0 +1,72 @@
++/*
++ * Copyright 2004 by Costas Stylianou <costas.stylianou@psion.com> +44(0)7850 394095
++ *
++ * Permission to use, copy, modify, distribute, and sell this software and its
++ * documentation for any purpose is hereby granted without fee, provided that
++ * the above copyright notice appear in all copies and that both that
++ * copyright notice and this permission notice appear in supporting
++ * documentation, and that the name of Costas Sylianou not be used in
++ * advertising or publicity pertaining to distribution of the software without
++ * specific, written prior permission. Costas Stylianou makes no representations
++ * about the suitability of this software for any purpose.  It is provided
++ * "as is" without express or implied warranty.
++ *
++ * COSTAS STYLIANOU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
++ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
++ * EVENT SHALL COSTAS STYLIANOU BE LIABLE FOR ANY SPECIAL, INDIRECT OR
++ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
++ * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
++ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
++ * PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * epson13806stub.c
++ *
++ * History:
++ * 28-Jan-04  C.Stylianou       PRJ NBL: Created from fbdevinit.c
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <kdrive-config.h>
++#endif
++
++#include "epson13806.h"
++
++void
++InitCard (char *name)
++{
++    fprintf(stderr, "Epson 13806 Tiny X Driver ver 1.01\n");
++
++    KdCardInfoAdd (&epsonFuncs, 0);
++}
++
++void
++InitOutput (ScreenInfo *pScreenInfo, int argc, char **argv)
++{
++    KdInitOutput (pScreenInfo, argc, argv);
++}
++
++void
++InitInput (int argc, char **argv)
++{
++    KdOsAddInputDrivers ();
++    KdInitInput ();
++}
++
++void
++CloseInput (void)
++{
++}
++
++int
++ddxProcessArgument (int argc, char **argv, int i)
++{
++    return KdProcessArgument (argc, argv, i);
++}
++
++void
++ddxUseMsg (void)
++{
++    KdUseMsg();
++}
