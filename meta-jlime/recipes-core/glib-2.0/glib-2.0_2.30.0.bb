@@ -17,13 +17,10 @@ SRC_URI = "${GNOME_MIRROR}/glib/${SHRT_VER}/glib-${PV}.tar.bz2 \
 SRC_URI[md5sum] = "fee101d9d7daa8ddfbae00325f307f3b"
 SRC_URI[sha256sum] = "ca9c731017ab370859e847f8b70079bc6dcf389dc0ccb0d0419925aff81b9687"
 
-# Only apply this patch for target recipe on uclibc
-SRC_URI_append_libc-uclibc = " ${@['', 'file://no-iconv.patch']['${PN}' == '${BPN}']}"
-
 SRC_URI_append_virtclass-native = " file://glib-gettextize-dir.patch"
 BBCLASSEXTEND = "native nativesdk"
 
-EXTRA_OECONF_append_libc-eglibc = " glib_cv_have_qsort_r=yes"
+EXTRA_OECONF_append_libc-glibc = " glib_cv_have_qsort_r=yes"
 EXTRA_OECONF_append_libc-uclibc = " glib_cv_have_qsort_r=no"
 
 do_configure_prepend() {
