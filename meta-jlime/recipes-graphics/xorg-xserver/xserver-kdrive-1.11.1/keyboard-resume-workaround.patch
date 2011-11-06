@@ -1,12 +1,8 @@
-Upstream-Status: Pending
-
-Signed-off-by: Yu Ke <ke.yu@intel.com>
-
-Index: xorg-server-1.4/hw/kdrive/linux/keyboard.c
-===================================================================
---- xorg-server-1.4.orig/hw/kdrive/linux/keyboard.c	2007-09-29 18:31:15.000000000 +0200
-+++ xorg-server-1.4/hw/kdrive/linux/keyboard.c	2007-09-29 18:33:02.000000000 +0200
-@@ -486,6 +486,8 @@
+diff --git a/hw/kdrive/linux/keyboard.c b/hw/kdrive/linux/keyboard.c
+index f5f9d9b..c207666 100644
+--- a/hw/kdrive/linux/keyboard.c
++++ b/hw/kdrive/linux/keyboard.c
+@@ -486,6 +486,8 @@ readKernelMapping(KdKeyboardInfo *ki)
      ki->minScanCode = minKeyCode;
      ki->maxScanCode = maxKeyCode;
  #endif
@@ -15,7 +11,7 @@ Index: xorg-server-1.4/hw/kdrive/linux/keyboard.c
  }
  
  /*
-@@ -743,11 +743,6 @@
+@@ -707,11 +709,6 @@ LinuxKeyboardEnable (KdKeyboardInfo *ki)
      cfsetispeed(&nTty, 9600);
      cfsetospeed(&nTty, 9600);
      tcsetattr(fd, TCSANOW, &nTty);

@@ -37,6 +37,9 @@ ARM_INSTRUCTION_SET = "arm"
 
 EXTRA_OECONF = "--enable-composite \
                 --enable-kdrive \
+                --enable-kdrive-kbd \
+                --enable-kdrive-mouse \
+                --enable-kdrive-evdev \
                 --disable-dga \
                 --disable-dri \
                 --disable-glx \

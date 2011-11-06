@@ -1,0 +1,62 @@
+diff --git a/hw/kdrive/linux/linux.c b/hw/kdrive/linux/linux.c
+index a53db49..e1580c7 100644
+--- a/hw/kdrive/linux/linux.c
++++ b/hw/kdrive/linux/linux.c
+@@ -51,7 +51,9 @@ extern KdKeyboardDriver	LinuxKeyboardDriver;
+ 
+ static int  vtno;
+ int  LinuxConsoleFd;
++#if 0
+ int  LinuxApmFd = -1;
++#endif
+ static int  activeVT;
+ static Bool enabled;
+ 
+@@ -179,6 +181,7 @@ LinuxSetSwitchMode (int mode)
+     }
+ }
+ 
++#if 0
+ static void
+ LinuxApmBlock (pointer blockData, OSTimePtr pTimeout, pointer pReadmask)
+ {
+@@ -231,6 +234,7 @@ LinuxApmWakeup (pointer blockData, int result, pointer pReadmask)
+ 	}
+     }
+ }
++#endif
+ 
+ #ifdef FNONBLOCK
+ #define NOBLOCK FNONBLOCK
+@@ -251,6 +255,7 @@ LinuxEnable (void)
+     /*
+      * Open the APM driver
+      */
++#if 0
+     LinuxApmFd = open ("/dev/apm_bios", 2);
+     if (LinuxApmFd < 0 && errno == ENOENT)
+ 	LinuxApmFd = open ("/dev/misc/apm_bios", 2);
+@@ -261,6 +266,7 @@ LinuxEnable (void)
+ 	RegisterBlockAndWakeupHandlers (LinuxApmBlock, LinuxApmWakeup, 0);
+ 	AddEnabledDevice (LinuxApmFd);
+     }
++#endif
+ 
+     /*
+      * now get the VT
+@@ -292,6 +298,7 @@ LinuxDisable (void)
+ 	ioctl (LinuxConsoleFd, VT_RELDISP, 1);
+     }
+     enabled = FALSE;
++#if 0
+     if (LinuxApmFd >= 0)
+     {
+ 	RemoveBlockAndWakeupHandlers (LinuxApmBlock, LinuxApmWakeup, 0);
+@@ -299,6 +306,7 @@ LinuxDisable (void)
+ 	close (LinuxApmFd);
+ 	LinuxApmFd = -1;
+     }
++#endif
+ }
+ 
+ static void

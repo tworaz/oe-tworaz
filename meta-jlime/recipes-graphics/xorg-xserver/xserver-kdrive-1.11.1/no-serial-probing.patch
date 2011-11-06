@@ -1,0 +1,15 @@
+diff --git a/hw/kdrive/linux/mouse.c b/hw/kdrive/linux/mouse.c
+index 93c2078..8547550 100644
+--- a/hw/kdrive/linux/mouse.c
++++ b/hw/kdrive/linux/mouse.c
+@@ -924,8 +924,10 @@ char *kdefaultMouse[] =  {
+     "/dev/mouse",
+     "/dev/psaux",
+     "/dev/adbmouse",
++#ifdef BREAK_MY_SERIAL_CONSOLE
+     "/dev/ttyS0",
+     "/dev/ttyS1",
++#endif
+ };
+ 
+ #define NUM_DEFAULT_MOUSE    (sizeof (kdefaultMouse) / sizeof (kdefaultMouse[0]))
