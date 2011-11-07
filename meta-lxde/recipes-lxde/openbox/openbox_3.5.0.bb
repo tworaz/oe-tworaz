@@ -4,11 +4,10 @@ SECTION = "x11/wm"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
-PV = "3.5.0"
-PR = "r2"
+PR = "r3"
 
 RDEPENDS = "glib-2.0 libxml2 pango imlib2 startup-notification libxft libxrandr libxt"
-DEPENDS = "${RDEPENDS} pkgconfig-native xextproto xf86vidmodeproto gtk-engines"
+DEPENDS = "${RDEPENDS} pkgconfig-native xextproto xf86vidmodeproto"
 RDEPENDS_${PN} = "openbox-theme-clearlooks"
 
 SRC_URI = "http://openbox.org/dist/openbox/openbox-${PV}.tar.gz"
