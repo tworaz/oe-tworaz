@@ -13,7 +13,7 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/lxde/${PN}-${PV}.tar.gz \
 SRC_URI[md5sum] = "129fae75d1cd3983fd94542c573a70a1"
 SRC_URI[sha256sum] = "6a3579d6f384c03a33a03e4d32016428c84eb0f2bc421704f724fe2cc015cddd"
 
-inherit autotools gettext
+inherit autotools gettext pkgconfig
 
 EXTRA_OECONF += "--enable-alsa --with-x --with-plugins=all"
 
