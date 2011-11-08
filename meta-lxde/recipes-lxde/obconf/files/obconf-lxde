@@ -1,0 +1,2 @@
+#!/bin/sh
+obconf  --config-file lxde-rc.xml
