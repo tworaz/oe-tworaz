@@ -1,7 +1,7 @@
 SECTION = "kernel"
 DESCRIPTION = "Linux kernel for Psion Teklogix NetBook Pro"
 LICENSE = "GPLv2"
-PR = "r0"
+PR = "r1"
 
 DEPENDS="boost-img-native boost-bootcode"
 
