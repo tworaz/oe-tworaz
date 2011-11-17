@@ -1,0 +1,11 @@
+--- lxdm-0.4.1.orig/src/lxdm.c	2011-11-16 22:27:33.617019240 +0100
++++ lxdm-0.4.1/src/lxdm.c	2011-11-17 19:42:08.674559677 +0100
+@@ -874,7 +874,7 @@
+     int err;
+     char x[256];
+  
+-    if(!s->pamh && PAM_SUCCESS != pam_start("lxdm", pw->pw_name, &conv, &s->pamh))
++    if(!s->pamh && PAM_SUCCESS != pam_start("login", pw->pw_name, &conv, &s->pamh))
+     {
+         s->pamh = NULL;
+         return;

@@ -1,0 +1,41 @@
+#!/bin/sh
+
+. /etc/init.d/functions
+
+DAEMON=/usr/sbin/lxdm
+PIDDIR=/var/run
+PIDFILE=$PIDDIR/lxdm.pid
+
+for x in $(cat /proc/cmdline); do
+	case $x in
+	x11=false)
+		echo "LXDM disabled"
+		exit 0;
+		;;
+	esac
+done
+
+case "$1" in
+	start)
+		echo "Starting LXDM"
+		start-stop-daemon --start --quiet --pidfile $PIDFILE -m -b \
+			--exec $DAEMON
+	;;
+
+	stop)
+		echo "Stopping LXDM"
+		start-stop-daemon --stop --quiet --pidfile $PIDFILE
+	;;
+
+	restart)
+		$0 stop
+		sleep 1
+		$0 start
+	;;
+
+	*)
+		echo "usage: $0 { start | stop | restart }"
+	;;
+esac
+
+exit 0

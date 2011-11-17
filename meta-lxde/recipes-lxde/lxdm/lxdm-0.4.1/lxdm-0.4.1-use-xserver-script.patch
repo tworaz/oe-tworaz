@@ -1,0 +1,11 @@
+--- lxdm-0.4.1.orig/data/lxdm.conf.in	2011-11-16 22:27:33.621019188 +0100
++++ lxdm-0.4.1/data/lxdm.conf.in	2011-11-17 19:46:30.870263430 +0100
+@@ -20,7 +20,7 @@
+ 
+ [server]
+ ## arg used to start xserver, not fully function
+-# arg=/usr/bin/X -background vt1
++arg=/etc/X11/Xserver
+ 
+ [display]
+ ## gtk theme used by greeter
