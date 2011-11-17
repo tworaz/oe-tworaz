@@ -1,7 +1,7 @@
-SRCREV="84144d142cb9f041dd18285cb2ad9dbe6619b0a2"
+SRCREV="eb51b7f1359cf75c792cca6615c9aa1b167ce79f"
 
 require uclibc.inc
-PR = "${INC_PR}.0"
+PR = "${INC_PR}.1"
 PROVIDES += "virtual/${TARGET_PREFIX}libc-for-gcc"
 
 SRC_URI = "git://uclibc.org/uClibc.git;branch=${PV};protocol=git \
@@ -16,10 +16,8 @@ SRC_URI = "git://uclibc.org/uClibc.git;branch=${PV};protocol=git \
 	file://remove_attribute_optimize_Os.patch \
 	file://compile-arm-fork-with-O2.patch \
 	file://orign_path.patch \
-	file://rtld_no.patch \
 	file://0001-mips-signalfd.h-SFD_NONBLOCK-for-mips-is-0200-unlike.patch \
 	file://uclibc-execvpe.patch \
-	file://uclibc_scheduler_update.patch \
 	file://sync_file_range2.patch \
 	file://mount.h-update.patch \
 	"
