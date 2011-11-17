@@ -1,6 +1,6 @@
 require glib.inc
 
-PR = "r4"
+PR = "r5"
 PE = "1"
 
 DEPENDS += "libffi python-argparse-native"
@@ -20,8 +20,7 @@ SRC_URI[sha256sum] = "ca9c731017ab370859e847f8b70079bc6dcf389dc0ccb0d0419925aff8
 SRC_URI_append_virtclass-native = " file://glib-gettextize-dir.patch"
 BBCLASSEXTEND = "native nativesdk"
 
-EXTRA_OECONF_append_libc-glibc = " glib_cv_have_qsort_r=yes"
-EXTRA_OECONF_append_libc-uclibc = " glib_cv_have_qsort_r=no"
+EXTRA_OECONF += " glib_cv_have_qsort_r=yes"
 
 do_configure_prepend() {
   # missing ${topdir}/gtk-doc.make and --disable-gtk-doc* is not enough, because it calls gtkdocize (not provided by gtk-doc-native)
