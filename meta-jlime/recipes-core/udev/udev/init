@@ -35,9 +35,19 @@ LANG=C awk "\$2 == \"/dev\" && \$3 == \"tmpfs\" { exit 1 }" /proc/mounts && {
 	mkdir -m 1777 /dev/shm
 }
 
-if [ "$DEVCACHE" != "" ]; then
+# mount the /run if not done already
+LANG=C awk "\$2 == \"/run\" && \$3 == \"tmpfs\" { exit 1 }" /proc/mounts && {
+	mkdir -p /run
+	mount /run
+}
+
+# mount the /var/volatile if not done already
+LANG=C awk "\$2 == \"/var/volatile\" && \$3 == \"tmpfs\" { exit 1 }" /proc/mounts && {
 	mount /var/volatile
 	mkdir -p /var/volatile/tmp
+}
+
+if [ "$DEVCACHE" != "" ]; then
 	# Invalidate udev cache if the kernel or its bootargs/cmdline have changed
 	[ -x /bin/uname ] && /bin/uname -mrspv > /tmp/uname || touch /tmp/uname
 	[ -r /proc/cmdline ] && cat /proc/cmdline > /tmp/cmdline || touch /tmp/cmdline
