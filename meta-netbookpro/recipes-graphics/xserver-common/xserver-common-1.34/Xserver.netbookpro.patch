@@ -1,0 +1,14 @@
+Index: xserver-common-1.34/X11/xserver-common
+===================================================================
+--- xserver-common-1.34.orig/X11/xserver-common
++++ xserver-common-1.34/X11/xserver-common
+@@ -195,6 +195,9 @@ else
+         "palm_treo_650")
+             DPI="181"
+             ARGS="$ARGS -screen 320x320 -hide-cursor" ;;
++        "psion_teklogix_netbook_pro")
++	    DPI="100"
++	    ARGS="$ARGS -screen ${SCREEN_SIZE} -hide-cursor -keybd keyboard" ;;
+         "glofiish_m800")
+             DPI="285"
+             ARGS="$ARGS -screen ${SCREEN_SIZE} -hide-cursor vt1" ;;

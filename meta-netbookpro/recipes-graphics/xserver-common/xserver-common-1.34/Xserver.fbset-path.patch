@@ -1,0 +1,13 @@
+Index: xserver-common-1.34/X11/xserver-common
+===================================================================
+--- xserver-common-1.34.orig/X11/xserver-common
++++ xserver-common-1.34/X11/xserver-common
+@@ -33,7 +33,7 @@ fi
+ . /etc/init.d/functions
+ 
+ fallback_screen_arg() {
+-    geom=`fbset | grep geometry`
++    geom=`/usr/sbin/fbset | grep geometry`
+     w=`echo $geom | awk '{ print $2 }'`
+     h=`echo $geom | awk '{ print $3 }'`
+     b=`echo $geom | awk '{ print $6 }'`
