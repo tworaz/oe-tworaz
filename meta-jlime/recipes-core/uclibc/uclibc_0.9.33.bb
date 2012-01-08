@@ -1,4 +1,4 @@
-SRCREV="eb51b7f1359cf75c792cca6615c9aa1b167ce79f"
+SRCREV="a7123b4744112deecb7aef771f224b680b4a02c0"
 
 require uclibc.inc
 PR = "${INC_PR}.1"

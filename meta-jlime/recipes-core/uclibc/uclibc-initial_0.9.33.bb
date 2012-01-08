@@ -12,7 +12,7 @@ STAGINGCC_virtclass-nativesdk = "gcc-crosssdk-initial"
 
 do_install() {
 	# Install initial headers into the cross dir
-	make PREFIX=${D} DEVEL_PREFIX=${prefix}/ RUNTIME_PREFIX=/ \
+	make PREFIX=${D} DEVEL_PREFIX=${prefix}/ RUNTIME_PREFIX=/ CROSS_COMPILE=${TARGET_PREFIX} \
 		install_headers install_startfiles
 	${CC} -nostdlib -nostartfiles -shared -x c /dev/null \
 		-o lib/libc.so
