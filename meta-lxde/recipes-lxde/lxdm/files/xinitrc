@@ -42,9 +42,10 @@ esac
 [ -f $HOME/.xprofile ] && . $HOME/.xprofile
 
 # run all system xinitrc shell scripts.
-XINITFILES=$(run-parts --list /etc/X11/Xinit.d)
+XINITDIR=/etc/X11/Xinit.d
+XINITFILES=`ls -X $XINITDIR`
 for XINITFILE in $XINITFILES; do
-  if [ -x "$XINITFILE" ]; then
-    . $XINITFILE
+  if [ -x "$XINITDIR/$XINITFILE" ]; then
+    . $XINITDIR/$XINITFILE
   fi
 done
