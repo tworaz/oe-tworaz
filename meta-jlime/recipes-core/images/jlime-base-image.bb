@@ -1,9 +1,9 @@
 IMAGE_FEATURES += "package-management"
 
+PR = "r1"
+
 POKY_EXTRA_INSTALL = "\
-    file \
-    htop \
-    vim \
+    task-jlime-apps-cli \
     "
 
 LICENSE = "MIT"
