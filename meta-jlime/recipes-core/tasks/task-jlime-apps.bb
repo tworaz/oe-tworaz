@@ -22,6 +22,7 @@ RDEPENDS_${PN}-cli = " \
 RDEPENDS_${PN}-gui = " \
     leafpad \
     gcalctool \
+    gpicview \
     epdfview \
     midori \
     claws-mail \
