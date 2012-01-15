@@ -1,0 +1,12 @@
+diff -auNr lxappearance-0.5.1.orig/src/cursor-theme.c lxappearance-0.5.1/src/cursor-theme.c
+--- lxappearance-0.5.1.orig/src/cursor-theme.c	2012-01-15 20:16:51.113223420 +0100
++++ lxappearance-0.5.1/src/cursor-theme.c	2012-01-15 20:17:17.017897756 +0100
+@@ -44,6 +44,8 @@
+         cursor = gdk_cursor_new(types[i]);
+         GdkPixbuf* pix = gdk_cursor_get_image(cursor);
+         gdk_cursor_unref(cursor);
++	if (pix == NULL)
++		continue;
+         gtk_list_store_insert_with_values(store, &it, -1, 0, pix, -1);
+         g_object_unref(pix);
+     }
