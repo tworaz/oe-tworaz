@@ -11,7 +11,7 @@ LICENSE = "BSD-2-Clause"
 LIC_FILES_CHKSUM = "file://COPYING;md5=4e50a03f9595c799ccc398d0bac5196a"
 
 SRC_URI = "git://git.atheme.org/libmcs;protocol=git;branch=master"
-SRCREV = "9fbfa161967c230f64a77c62c96f6648b1824ffa"
+SRCREV = "${P}"
 
 FILES_${PN} += "${libdir}/mcs/*.so"
 FILES_${PN}-dbg += "${libdir}/mcs/.debug/*.so"
