@@ -2,7 +2,7 @@ DESCRIPTION = "Realtime MPEG 1.0/2.0/2.5 audio player for layers 1,2 and 3"
 HOMEPAGE = "http://www.mpg123.org/"
 SECTION = "multimedia"
 
-PR = "r0"
+PR = "r1"
 
 DEPENDS = "alsa-lib"
 
@@ -14,7 +14,7 @@ SRC_URI[md5sum] = "073620b3938c4cb9c4f70e8fe3e114b8"
 SRC_URI[sha256sum] = "f7ec51069ad0d6ac589d78ee431fbf7a4874f9c7338f01b67964640305e627c3"
 
 OPTIMIZE_CPU = "generic_fpu"
-OPTIMIZE_CPU_armv5 = "arm_nofpu"
+OPTIMIZE_CPU_arm = "arm_nofpu"
 
 ARM_INSTRUCTION_SET = "arm"
 
@@ -31,8 +31,3 @@ FILES_${PN}-player = "${bindir}/${PN}"
 FILES_${PN}-player-dbg = "${bindir}/.debug/${PN}"
 
 inherit autotools pkgconfig
-
-do_install_append () {
-    # Not required for anything, just trash those la files
-    rm -f ${D}/${libdir}/${PN}/*.la
-}
