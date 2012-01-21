@@ -1,0 +1,23 @@
+diff -auNr LibVNCServer-0.9.8.2.orig//configure.ac LibVNCServer-0.9.8.2/configure.ac
+--- LibVNCServer-0.9.8.2.orig//configure.ac	2012-01-21 19:16:16.023671383 +0100
++++ LibVNCServer-0.9.8.2/configure.ac	2012-01-21 19:16:30.277492190 +0100
+@@ -855,7 +855,7 @@
+ 	#
+ 	# configure.ac:690: required file `x11vnc/Makefile.in' not found
+ 	#
+-	AC_CONFIG_FILES([x11vnc/Makefile x11vnc/misc/Makefile x11vnc/misc/turbovnc/Makefile])
++	#AC_CONFIG_FILES([x11vnc/Makefile x11vnc/misc/Makefile x11vnc/misc/turbovnc/Makefile])
+ 
+ 	if test ! -z "$with_system_libvncserver" -a "x$with_system_libvncserver" != "xno"; then
+ 		# need to move local tarball rfb headers aside:
+diff -auNr LibVNCServer-0.9.8.2.orig//Makefile.am LibVNCServer-0.9.8.2/Makefile.am
+--- LibVNCServer-0.9.8.2.orig//Makefile.am	2012-01-21 19:16:15.985671863 +0100
++++ LibVNCServer-0.9.8.2/Makefile.am	2012-01-21 19:16:36.504413905 +0100
+@@ -1,7 +1,3 @@
+-if WITH_X11VNC
+-X11VNC=x11vnc
+-endif
+-
+ SUBDIRS=libvncserver examples libvncclient vncterm classes client_examples test $(X11VNC)
+ DIST_SUBDIRS=libvncserver examples libvncclient vncterm classes client_examples test
+ EXTRA_DIST = CMakeLists.txt rfb/rfbint.h.cmake rfb/rfbconfig.h.cmake
