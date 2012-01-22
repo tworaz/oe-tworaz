@@ -1,0 +1,47 @@
+diff -auNr remmina-plugins-0.9.2.orig/configure.ac remmina-plugins-0.9.2/configure.ac
+--- remmina-plugins-0.9.2.orig/configure.ac	2012-01-21 20:29:24.271503639 +0100
++++ remmina-plugins-0.9.2/configure.ac	2012-01-21 20:42:31.238610121 +0100
+@@ -62,18 +62,6 @@
+ AC_SUBST(REMMINA_PLUGINS_CFLAGS)
+ AC_SUBST(REMMINA_PLUGINS_LIBS)
+ 
+-# Checks for plugin development files
+-CFLAGS="$CFLAGS -I${prefix}/include"
+-saved_CFLAGS=$CFLAGS
+-CFLAGS="$CFLAGS $REMMINA_PLUGINS_CFLAGS"
+-AC_CHECK_HEADER(remmina/plugin.h, [], [
+-    echo "ERROR: Remmina plugin development headers are not found."
+-    exit 1
+-], [
+-#include <gtk/gtk.h>
+-])
+-CFLAGS=$saved_CFLAGS
+-
+ # Check libpthread
+ AC_CHECK_LIB(pthread, pthread_create, [
+     AC_CHECK_HEADER(pthread.h, [
+@@ -110,16 +98,6 @@
+ # Check libxkbfile
+ PKG_CHECK_MODULES(XKBFILE, [xkbfile], [xkbfile_support="yes"], [xkbfile_support="no. libxkbfile-dev required."])
+ 
+-# Check remmina executable
+-if test "x$prefix" = "xNONE"; then
+-    remminabin=$ac_default_prefix/bin/remmina
+-else
+-    remminabin=$prefix/bin/remmina
+-fi
+-AC_CHECK_FILE($remminabin,
+-    [remminabin_found="yes"],
+-    [remminabin_found="no. (If you are packaging the plugins, please make sure it uses the same prefix as remmina and ignore this)"])
+-
+ REMMINA_PLUGINS_SUBDIRS="common po"
+ 
+ # Check RDP dependencies
+@@ -271,7 +249,6 @@
+ echo
+ echo "Remmina-Plugins configure result:"
+ echo
+-echo "* Remmina main program: $remminabin_found"
+ echo "* NLS support: $nls_support"
+ echo "* Multi-threaded support: $pthread_support"
+ echo "* SSH support: $ssh_support"
