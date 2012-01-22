@@ -6,6 +6,7 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6a6a8e020838b23406c81b19c1d46df6"
 
 DEPENDS = "gtk+"
+RDEPENDS = "gnome-icon-theme"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/lxde/${PN}-${PV}.tar.bz2"
 SRC_URI[md5sum] = "0c6ed34bb678f832345fc4495647a705"
