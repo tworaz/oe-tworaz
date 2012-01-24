@@ -29,6 +29,7 @@ RDEPENDS_${PN}-gui = " \
     claws-mail \
     epdfview \
     gcalctool \
+    gnumeric \
     gnome-mplayer \
     leafpad \
     liferea \
