@@ -1,5 +1,5 @@
 #!/bin/sh
 
-GTK_MODULES=gtkstylus.so
+GTK_MODULES=libgtkstylus.so.0
 
 export GTK_MODULES
