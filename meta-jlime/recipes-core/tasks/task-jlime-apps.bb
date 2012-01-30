@@ -3,7 +3,7 @@ SECTION = "x11/wm"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
-PR = "r4"
+PR = "r6"
 
 inherit task
 
@@ -25,16 +25,15 @@ RDEPENDS_${PN}-cli = " \
 
 RDEPENDS_${PN}-gui = " \
     abiword \
-    batti \
     claws-mail \
     epdfview \
     gcalctool \
     gnumeric \
     gnome-mplayer \
+    gimp \
     leafpad \
     liferea \
     midori \
-    notification-daemon \
     pidgin \
     remmina \
     xarchiver \
