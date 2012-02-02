@@ -30,7 +30,6 @@ RDEPENDS_${PN}-gui = " \
     gcalctool \
     gnumeric \
     gnome-mplayer \
-    gimp \
     leafpad \
     liferea \
     midori \
