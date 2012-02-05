@@ -3,7 +3,7 @@ SECTION = "x11/wm"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
-PR = "r6"
+PR = "r7"
 
 inherit task
 
@@ -37,5 +37,4 @@ RDEPENDS_${PN}-gui = " \
     remmina \
     xarchiver \
     xchat \
-    xnoise \
     "
