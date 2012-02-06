@@ -2,9 +2,9 @@ DESCRIPTION = "Rezlooks Gil-Ouch theme"
 HOMEPAGE = "http://gnome-look.org/content/show.php/Rezlooks-Gil-Ouch?content=70394"
 SECTION = "x11/themes"
 
-PR = "r1"
+PR = "r2"
 
-RDEPENDS = "gtk-engines-rezlooks"
+inherit allarch
 
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://gtk-2.0/gtkrc;md5=9b78ae1658f1b5b77d271ea2ba42bdca"
@@ -23,3 +23,5 @@ do_install () {
     install -d -m 0755 "${D}/${datadir}/themes/Rezlooks-Gil-Ouch/gtk-2.0"
     install -m 0644 "${S}/gtk-2.0/gtkrc" "${D}/${datadir}/themes/Rezlooks-Gil-Ouch/gtk-2.0"
 }
+
+RDEPENDS_${PN} = "gtk-engines-rezlooks"
