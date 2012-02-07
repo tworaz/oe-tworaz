@@ -105,6 +105,6 @@ python populate_packages_prepend () {
 			packages = "%s %s" % (packages, package)
 			pkg_files = "${datadir}/audacious/Skins/%s/*" % skindir
 			d.setVar("FILES_%s" % package, pkg_files)
-			d.setVar("DESCRIPTION_%s" % package, "Audacious %s slin" % skindir)
+			d.setVar("DESCRIPTION_%s" % package, "Audacious %s skin" % skindir)
 	d.setVar('PACKAGES', packages)
 }
