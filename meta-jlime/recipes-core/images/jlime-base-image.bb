@@ -1,8 +1,8 @@
 IMAGE_FEATURES += "package-management"
 
-PR = "r1"
+PR = "r2"
 
-POKY_EXTRA_INSTALL = "\
+CORE_IMAGE_EXTRA_INSTALL = "\
     task-jlime-apps-cli \
     "
 
