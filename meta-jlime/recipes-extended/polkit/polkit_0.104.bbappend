@@ -1,2 +1,2 @@
-EXTRA_OECONF += " --disable-systemd"
+PACKAGECONFIG = "consolekit"
 PRINC = "1"
