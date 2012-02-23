@@ -1,6 +1,6 @@
-IMAGE_FEATURES += "package-management"
+IMAGE_FEATURES += "package-management ssh-server-openssh"
 
-PR = "r1"
+PR = "r2"
 
 CORE_IMAGE_EXTRA_INSTALL = "\
     task-x11-server\
