@@ -4,7 +4,7 @@ SECTION = "x11"
 
 inherit gnome systemd
 
-PR = "r4"
+PR = "r5"
 
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
@@ -15,7 +15,7 @@ SRC_URI = "http://www.freedesktop.org/software/${PN}/${P}.tar.xz"
 SRC_URI[md5sum] = "47b5af77b544528c02d82761bd574c09"
 SRC_URI[sha256sum] = "9feb3d58c5c739f2df4b5410404b29f16e3f4aa6739b685ceb12903f4d5ea867"
 
-PACKAGES =+ "accounts-daemon accounts-daemon-systemd"
+PACKAGES += "accounts-daemon"
 SYSTEMD_PACKAGES = "accounts-daemon-systemd"
 SYSTEMD_SERVICE_accounts-daemon-systemd = "accounts-daemon.service"
 
@@ -26,7 +26,7 @@ FILES_accounts-daemon = " \
     ${datadir}/polkit-1/* \
     ${datadir}/${localstatedir}/lib/AccountsService \
     "
-FILES_accounts-daemon-systemd = "${base_libdir}/systemd"
+FILES_accounts-daemon-systemd = "${systemd_unitdir}"
 
 EXTRA_OECONF = " \
     --disable-static \
