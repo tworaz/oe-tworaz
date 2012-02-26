@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://COPYRIGHT;md5=f18ebe7e452708c26f83954f81062ba7"
 
 DEPENDS = "gnutls"
 
-PR = "r1"
+PR = "r2"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/libetpan/libetpan-${PV}.tar.gz"
 SRC_URI[md5sum] = "6fee60d08506e941642b8fa087e60b07"
@@ -22,7 +22,6 @@ EXTRA_OECONF = "\
     ${@base_contains('DISTRO_FEATURES', 'ipv6', '--enable-ipv6', '--disable-ipv6', d)} \
     "
 
-#PARALLEL_MAKE = ""
-
 FILES_${PN} = "${libdir}/lib*.so.*"
-FILES_${PN}-dev = "${bindir} ${includedir} ${libdir}/lib*.so ${libdir}/*.la ${libdir}/*.a ${libdir}/pkgconfig"
+FILES_${PN}-dev = "${bindir} ${includedir} ${libdir}/lib*.so ${libdir}/*.la ${libdir}/pkgconfig"
+FILES_${PN}-staticdev = "${libdir}/*.a"
