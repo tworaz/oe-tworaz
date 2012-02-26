@@ -8,8 +8,8 @@ LIC_FILES_CHKSUM = "file://LICENCE;md5=ad234d4b46db63491c4a9789da4fb341"
 DEPENDS = "ncurses libcap libpcre gdbm groff-native"
 
 SRC_URI = "ftp://ftp.zsh.org/pub/${P}.tar.bz2"
-SRC_URI[md5sum] = "11766b0dd674a513810903cd33ffcac4"
-SRC_URI[sha256sum] = "8708f485823fb7e51aa696776d0dfac7d3558485182672cf9311c12a50a95486"
+SRC_URI[md5sum] = "8258967060b2654f30001a011946ac6a"
+SRC_URI[sha256sum] = "054e0452afd9c742c9f1489465175e1d4d7db50d88b602d132551d850cf7a704"
 
 FILES_${PN}-dbg += "\
     ${libdir}/${PN}/${PV}/${PN}/.debug/*.so \
