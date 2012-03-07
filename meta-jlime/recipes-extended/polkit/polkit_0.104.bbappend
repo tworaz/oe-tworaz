@@ -1,2 +1,2 @@
-PACKAGECONFIG = "consolekit"
+POLKITAUTH = "consolekit"
 PRINC = "1"
