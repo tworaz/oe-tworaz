@@ -1,0 +1,11 @@
+--- lightdm-1.1.1.orig/src/xserver-local.c	2012-01-28 19:52:04.948896886 +0100
++++ lightdm-1.1.1/src/xserver-local.c	2012-01-28 19:56:04.521885046 +0100
+@@ -464,7 +464,7 @@
+         g_string_append (command, " -nolisten tcp");
+
+     if (server->priv->vt >= 0)
+-        g_string_append_printf (command, " vt%d -novtswitch", server->priv->vt);
++        g_string_append_printf (command, " vt%d", server->priv->vt);
+
+     if (server->priv->replacing_plymouth)
+         g_string_append (command, " -background none");

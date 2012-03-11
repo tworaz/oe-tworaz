@@ -1,0 +1,40 @@
+#!/bin/sh
+#
+# LightDM wrapper to run around X sessions.
+
+echo "Running X session wrapper"
+
+# Load profile
+for file in "/etc/profile" "$HOME/.profile" "/etc/xprofile" "$HOME/.xprofile"; do
+    if [ -f "$file" ]; then
+        echo "Loading profile from $file";
+        . "$file"
+    fi
+done
+
+# Run all system xinitrc shell scripts.
+xinitdir="/etc/X11/Xinit.d"
+if [ -d "$xinitdir" ]; then
+    for script in $xinitdir/*; do
+        echo "Loading xinit script $script"
+        if [ -x "$script" -a ! -d "$script" ]; then
+            . "$script"
+        fi
+    done
+fi
+
+# Load Xsession scripts
+#xsessionddir="/etc/X11/Xsession.d"
+#if [ -d "$xsessionddir" ]; then
+#    for i in `ls $xsessionddir`; do
+#        script="$xsessionddir/$i"
+#        echo "Loading X session script $script"
+#        if [ -r "$script"  -a -f "$script" ] && expr "$i" : '^[[:alnum:]_-]\+$' > /dev/null; then
+#            . "$script"
+#        fi
+#    done
+#fi
+
+echo "X session wrapper complete, running session $@"
+
+exec $@

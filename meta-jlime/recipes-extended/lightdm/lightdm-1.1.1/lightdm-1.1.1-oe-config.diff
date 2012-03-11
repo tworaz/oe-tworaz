@@ -1,0 +1,20 @@
+--- lightdm-1.1.1.orig/data/lightdm.conf	2012-01-28 19:52:04.953896825 +0100
++++ lightdm-1.1.1/data/lightdm.conf	2012-01-28 19:54:33.564028541 +0100
+@@ -53,7 +53,7 @@
+ # exit-on-failure = True if the daemon should exit if this seat fails
+ #
+ [SeatDefaults]
+-#xserver-command=X
++xserver-command=/etc/X11/Xserver
+ #xserver-layout=
+ #xserver-config=
+ #xserver-allow-tcp=false
+@@ -65,7 +65,7 @@
+ #user-session=default
+ #allow-guest=true
+ #guest-session=UNIMPLEMENTED
+-#session-wrapper=lightdm-session
++session-wrapper=/etc/lightdm/Xsession
+ #display-setup-script=
+ #greeter-setup-script=
+ #session-setup-script=
