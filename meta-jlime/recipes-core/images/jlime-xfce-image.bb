@@ -1,6 +1,6 @@
 IMAGE_FEATURES += "package-management ssh-server-openssh"
 
-PR = "r2"
+PR = "r3"
 
 CORE_IMAGE_EXTRA_INSTALL = "\
     task-x11-server\
@@ -11,6 +11,7 @@ CORE_IMAGE_EXTRA_INSTALL = "\
     network-manager-applet \
     xfce4-power-manager \
     libgtkstylus \
+    psplash-jlime \
     "
 
 LICENSE = "MIT"
