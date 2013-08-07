@@ -30,29 +30,29 @@ ALTERNATIVE_PRIORITY = "10"
 PACKAGES =+ "${PN}-gnome ${PN}-gnome-dbg ${PN}-kde ${PN}-kde-dbg"
 FILES_${PN} += "${datadir}/gnome ${datadir}/xsessions"
 FILES_${PN}-gnome = "\
-	${bindir}/${PN}-gnome-session \
-	${bindir}/gnome-panel-control \
+    ${bindir}/${PN}-gnome-session \
+    ${bindir}/gnome-panel-control \
     ${bindir}/gdm-control \
-	${datadir}/xsessions/${PN}-gnome.desktop \
-	${datadir}/gnome \
+    ${datadir}/xsessions/${PN}-gnome.desktop \
+    ${datadir}/gnome \
     "
 FILES_${PN}-gnome-dbg = "\
-	${bindir}/.debug/${PN}-gnome-session \
+    ${bindir}/.debug/${PN}-gnome-session \
     ${bindir}/.debug/gnome-panel-control \
     ${bindir}/.debug/gdm-control \
     "
 FILES_${PN}-kde = "\
-	${bindir}/${PN}-kde-session \
-	${datadir}/xsessions/${PN}-kde.desktop \
-	"
+    ${bindir}/${PN}-kde-session \
+    ${datadir}/xsessions/${PN}-kde.desktop \
+    "
 FILES_${PN}-kde-dbg = "\
-	${bindir}/.debug/${PN}-kde-session \
+    ${bindir}/.debug/${PN}-kde-session \
     "
 
 PACKAGES_DYNAMIC += "${PN}-theme-*"
 
 python populate_packages_prepend() {
-	theme_dir = bb.data.expand('${datadir}/themes/', d)
-	theme_name = bb.data.expand('${PN}-theme-%s', d)
-	do_split_packages(d, theme_dir, '(.*)', theme_name, '${PN} theme for %s', extra_depends='', allow_dirs=True)
+    theme_dir = bb.data.expand('${datadir}/themes/', d)
+    theme_name = bb.data.expand('${PN}-theme-%s', d)
+    do_split_packages(d, theme_dir, '(.*)', theme_name, '${PN} theme for %s', extra_depends='', allow_dirs=True)
 }
